@@ -1,20 +1,66 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
+
+import { NavigationContainer } from '@react-navigation/native';
+import AppNavigator from './src/navigation/AppNavigator';
+
+import { initializeDatabase } from './src/database/database';
 
 export default function App() {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function setup() {
+      try {
+        await initializeDatabase();
+        console.log('DocuNest database initialized!');
+        setReady(true);
+      } catch (err) {
+        console.error('Database error:', err);
+        setError(err.message);
+      }
+    }
+
+    setup();
+  }, []);
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text>Database Error: {error}</Text>
+      </View>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#34495E" />
+        <Text style={{ marginTop: 10 }}>
+          Preparing DocuNest...
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <AppNavigator />
+    </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  center: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
 });
