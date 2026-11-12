@@ -76,7 +76,7 @@ DocuNest/
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/jeyarajahananthia/DocuNest
 ```
 
 ### 2. Navigate to the Project Folder
