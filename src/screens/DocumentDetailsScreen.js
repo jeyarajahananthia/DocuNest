@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import {
   View,
@@ -13,12 +13,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
-export default function DocumentDetailsScreen({ route }) {
-  const document = route.params?.document;
+import { deleteDocument } from '../database/database';
 
+export default function DocumentDetailsScreen({ route, navigation }) {
+  const [document, setDocument] = useState(route.params?.document);
   const [opening, setOpening] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Show messages on web and mobile
+  useEffect(() => {
+    setDocument(route.params?.document);
+  }, [route.params?.document]);
+
   const showMessage = (title, message) => {
     if (Platform.OS === 'web') {
       window.alert(`${title}\n\n${message}`);
@@ -30,23 +35,17 @@ export default function DocumentDetailsScreen({ route }) {
   // Open the imported document
   const openDocument = async () => {
     if (!document?.fileUri) {
-      showMessage(
-        'File Not Found',
-        'This document does not have a saved file.'
-      );
+      showMessage('File Not Found', 'This document does not have a saved file.');
       return;
     }
 
     try {
       setOpening(true);
 
-      // WEB
       if (Platform.OS === 'web') {
         let fileUrl = document.fileUri;
 
-        // Convert saved Base64 data into a browser Blob URL
         if (fileUrl.startsWith('data:')) {
-          // Open a new tab immediately to avoid popup blocking
           const newTab = window.open('about:blank', '_blank');
 
           if (!newTab) {
@@ -60,34 +59,24 @@ export default function DocumentDetailsScreen({ route }) {
           try {
             const response = await fetch(fileUrl);
             const blob = await response.blob();
-
             const blobUrl = URL.createObjectURL(blob);
 
             newTab.location.href = blobUrl;
-
-            // Keep the URL alive while the new tab uses it.
-            // It will be released when the page is closed.
-            console.log('Document opened successfully.');
           } catch (error) {
             newTab.close();
             throw error;
           }
-
         } else {
           const newTab = window.open(fileUrl, '_blank');
 
           if (!newTab) {
-            showMessage(
-              'Popup Blocked',
-              'Please allow popups for DocuNest.'
-            );
+            showMessage('Popup Blocked', 'Please allow popups for DocuNest.');
           }
         }
 
         return;
       }
 
-      // ANDROID / IOS
       await Linking.openURL(document.fileUri);
 
     } catch (error) {
@@ -101,6 +90,69 @@ export default function DocumentDetailsScreen({ route }) {
       setOpening(false);
     }
   };
+
+  // Navigate to Edit Document screen
+  const handleEdit = () => {
+    navigation.navigate('EditDocument', {
+      documentId: document.id,
+    });
+  };
+
+  // Delete document
+  
+const handleDelete = () => {
+  const confirmDelete = async () => {
+    try {
+      setDeleting(true);
+
+      await deleteDocument(document.id);
+
+      showMessage(
+        'Deleted Successfully',
+        'The document has been deleted successfully.'
+      );
+
+      navigation.goBack();
+
+    } catch (error) {
+      console.error('Document deletion error:', error);
+
+      showMessage(
+        'Delete Failed',
+        error.message || 'Unable to delete the document.'
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (Platform.OS === 'web') {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this file?'
+    );
+
+    if (confirmed) {
+      confirmDelete();
+    }
+  } else {
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this file?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Delete',
+          style: 'destructive',
+          onPress: confirmDelete,
+        },
+      ]
+    );
+  }
+};
+
 
   if (!document) {
     return (
@@ -138,6 +190,32 @@ export default function DocumentDetailsScreen({ route }) {
         ) : (
           <Text style={styles.openButtonText}>
             📂 Open Document
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Edit Button */}
+      <TouchableOpacity
+        style={styles.editButton}
+        onPress={handleEdit}
+        disabled={deleting}
+      >
+        <Text style={styles.editButtonText}>
+          ✏️ Edit Document
+        </Text>
+      </TouchableOpacity>
+
+      {/* Delete Button */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={handleDelete}
+        disabled={deleting}
+      >
+        {deleting ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.deleteButtonText}>
+            🗑️ Delete Document
           </Text>
         )}
       </TouchableOpacity>
@@ -180,10 +258,7 @@ export default function DocumentDetailsScreen({ route }) {
         <View style={styles.detailRow}>
           <Text style={styles.label}>File Size</Text>
           <Text style={styles.value}>
-            {(
-              Number(document.fileSize || 0) /
-              (1024 * 1024)
-            ).toFixed(2)} MB
+            {(Number(document.fileSize || 0) / (1024 * 1024)).toFixed(2)} MB
           </Text>
         </View>
 
@@ -246,10 +321,38 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
 
   openButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  editButton: {
+    backgroundColor: '#3498DB',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  deleteButton: {
+    backgroundColor: '#E74C3C',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  deleteButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',

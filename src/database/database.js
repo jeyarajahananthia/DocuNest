@@ -3,13 +3,16 @@ import * as SQLite from 'expo-sqlite';
 
 let db;
 
+// ========================================
+// INITIALIZE DATABASE
+// ========================================
+
 export async function initializeDatabase() {
   db = await SQLite.openDatabaseAsync('docunest.db');
 
-  // Enable foreign key relationships
   await db.execAsync('PRAGMA foreign_keys = ON;');
 
-  // Create Categories table
+  // Categories table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,7 +21,7 @@ export async function initializeDatabase() {
     );
   `);
 
-  // Create Documents table
+  // Documents table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,22 +39,77 @@ export async function initializeDatabase() {
     );
   `);
 
-  // Insert sample data only when database is empty
-  await seedDatabase();
+  // Migration tracking table
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS app_migrations (
+      migrationName TEXT PRIMARY KEY,
+      completedAt TEXT NOT NULL
+    );
+  `);
+
+  // Remove old sample documents only once
+  await removeOldSampleDocuments();
+
+  // Insert default categories
+  await seedCategories();
 
   return db;
 }
 
-// Create our own sample dataset
-async function seedDatabase() {
-  const result = await db.getFirstAsync(
-    'SELECT COUNT(*) AS count FROM documents'
+// ========================================
+// REMOVE OLD SAMPLE DOCUMENTS
+// ========================================
+
+async function removeOldSampleDocuments() {
+  const migration = await db.getFirstAsync(
+    `SELECT migrationName
+     FROM app_migrations
+     WHERE migrationName = ?`,
+    ['remove_sample_documents_v1']
   );
 
-  if (result.count > 0) {
-    return;
+  // Do not repeat this cleanup on future app launches
+  if (migration) return;
+
+  const sampleNames = [
+    'Mobile Computing Notes',
+    'Software Testing Assignment',
+    'React Native Tutorial',
+    'Database Management Notes',
+    'Network Security Slides',
+    'My CV',
+    'Personal ID Copy',
+    'Personal Information',
+    'Project Proposal',
+    'Meeting Report',
+    'Monthly Budget',
+    'Payment Receipt',
+    'Bank Statement',
+    'Travel Photograph',
+    'Important Information',
+  ];
+
+  for (const name of sampleNames) {
+    await db.runAsync(
+      'DELETE FROM documents WHERE name = ?',
+      [name]
+    );
   }
 
+  await db.runAsync(
+    `INSERT INTO app_migrations (migrationName, completedAt)
+     VALUES (?, ?)`,
+    ['remove_sample_documents_v1', new Date().toISOString()]
+  );
+
+  console.log('Old sample documents removed successfully!');
+}
+
+// ========================================
+// SEED DEFAULT CATEGORIES ONLY
+// ========================================
+
+async function seedCategories() {
   const sampleCategories = [
     {
       name: 'University',
@@ -77,170 +135,21 @@ async function seedDatabase() {
 
   for (const category of sampleCategories) {
     await db.runAsync(
-      'INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)',
+      `INSERT OR IGNORE INTO categories (name, description)
+       VALUES (?, ?)`,
       [category.name, category.description]
     );
   }
 
-  const categories = await db.getAllAsync(
-    'SELECT id, name FROM categories'
-  );
-
-  const categoryMap = {};
-
-  categories.forEach((category) => {
-    categoryMap[category.name] = category.id;
-  });
-
-  const getDate = (daysAgo) => {
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    return date.toISOString();
-  };
-
-  const sampleDocuments = [
-    {
-      name: 'Mobile Computing Notes',
-      description: 'Mobile IP lecture notes',
-      fileType: 'PDF',
-      fileSize: 1024000,
-      category: 'University',
-      daysAgo: 1,
-    },
-    {
-      name: 'Software Testing Assignment',
-      description: 'Postman and JMeter assignment',
-      fileType: 'PDF',
-      fileSize: 850000,
-      category: 'University',
-      daysAgo: 2,
-    },
-    {
-      name: 'React Native Tutorial',
-      description: 'React Native learning materials',
-      fileType: 'PDF',
-      fileSize: 1500000,
-      category: 'University',
-      daysAgo: 3,
-    },
-    {
-      name: 'Database Management Notes',
-      description: 'Database lecture materials',
-      fileType: 'DOCX',
-      fileSize: 750000,
-      category: 'University',
-      daysAgo: 5,
-    },
-    {
-      name: 'Network Security Slides',
-      description: 'Computer security study materials',
-      fileType: 'PPTX',
-      fileSize: 2200000,
-      category: 'University',
-      daysAgo: 7,
-    },
-    {
-      name: 'My CV',
-      description: 'Personal curriculum vitae',
-      fileType: 'PDF',
-      fileSize: 350000,
-      category: 'Personal',
-      daysAgo: 4,
-    },
-    {
-      name: 'Personal ID Copy',
-      description: 'Personal identification record',
-      fileType: 'JPG',
-      fileSize: 500000,
-      category: 'Personal',
-      daysAgo: 8,
-    },
-    {
-      name: 'Personal Information',
-      description: 'Personal information document',
-      fileType: 'DOCX',
-      fileSize: 450000,
-      category: 'Personal',
-      daysAgo: 10,
-    },
-    {
-      name: 'Project Proposal',
-      description: 'Project planning document',
-      fileType: 'PDF',
-      fileSize: 900000,
-      category: 'Work',
-      daysAgo: 6,
-    },
-    {
-      name: 'Meeting Report',
-      description: 'Project meeting report',
-      fileType: 'DOCX',
-      fileSize: 600000,
-      category: 'Work',
-      daysAgo: 9,
-    },
-    {
-      name: 'Monthly Budget',
-      description: 'Monthly expense calculations',
-      fileType: 'XLSX',
-      fileSize: 400000,
-      category: 'Finance',
-      daysAgo: 2,
-    },
-    {
-      name: 'Payment Receipt',
-      description: 'Payment transaction receipt',
-      fileType: 'PDF',
-      fileSize: 250000,
-      category: 'Finance',
-      daysAgo: 11,
-    },
-    {
-      name: 'Bank Statement',
-      description: 'Sample bank statement record',
-      fileType: 'PDF',
-      fileSize: 700000,
-      category: 'Finance',
-      daysAgo: 15,
-    },
-    {
-      name: 'Travel Photograph',
-      description: 'Travel memory photograph',
-      fileType: 'JPG',
-      fileSize: 1800000,
-      category: 'Other',
-      daysAgo: 12,
-    },
-    {
-      name: 'Important Information',
-      description: 'Other important information',
-      fileType: 'PDF',
-      fileSize: 550000,
-      category: 'Other',
-      daysAgo: 14,
-    },
-  ];
-
-  for (const doc of sampleDocuments) {
-    await db.runAsync(
-      `INSERT INTO documents
-      (name, description, fileType, fileSize, categoryId, dateAdded)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        doc.name,
-        doc.description,
-        doc.fileType,
-        doc.fileSize,
-        categoryMap[doc.category],
-        getDate(doc.daysAgo),
-      ]
-    );
-  }
-
-  console.log('DocuNest sample dataset inserted successfully!');
+  console.log('DocuNest categories initialized!');
 }
 
-// Retrieve all documents
+// ========================================
+// DOCUMENT FUNCTIONS
+// ========================================
+
+// GET ALL DOCUMENTS
+
 export async function getAllDocuments() {
   return await db.getAllAsync(`
     SELECT documents.*, categories.name AS categoryName
@@ -251,7 +160,109 @@ export async function getAllDocuments() {
   `);
 }
 
-// Retrieve all categories
+// GET DOCUMENT BY ID
+
+export async function getDocumentById(id) {
+  return await db.getFirstAsync(
+    `SELECT documents.*, categories.name AS categoryName
+     FROM documents
+     LEFT JOIN categories
+     ON documents.categoryId = categories.id
+     WHERE documents.id = ?`,
+    [id]
+  );
+}
+
+// ADD DOCUMENT
+
+export async function addDocument(
+  name,
+  description,
+  fileType,
+  fileSize,
+  categoryId,
+  fileUri
+) {
+  if (!name || !name.trim()) {
+    throw new Error('Document name is required.');
+  }
+
+  if (!fileType) {
+    throw new Error('File type is required.');
+  }
+
+  const result = await db.runAsync(
+    `INSERT INTO documents
+     (name, description, fileType, fileSize, categoryId, dateAdded, fileUri)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      name.trim(),
+      description?.trim() || '',
+      fileType,
+      fileSize || 0,
+      categoryId || null,
+      new Date().toISOString(),
+      fileUri || null,
+    ]
+  );
+
+  return result;
+}
+
+// UPDATE DOCUMENT
+
+export async function updateDocument(
+  id,
+  name,
+  description,
+  categoryId
+) {
+  if (!name || !name.trim()) {
+    throw new Error('Document name is required.');
+  }
+
+  const result = await db.runAsync(
+    `UPDATE documents
+     SET name = ?,
+         description = ?,
+         categoryId = ?
+     WHERE id = ?`,
+    [
+      name.trim(),
+      description?.trim() || '',
+      categoryId || null,
+      id,
+    ]
+  );
+
+  if (result.changes === 0) {
+    throw new Error('Document not found.');
+  }
+
+  return result;
+}
+
+// DELETE DOCUMENT
+
+export async function deleteDocument(id) {
+  const result = await db.runAsync(
+    'DELETE FROM documents WHERE id = ?',
+    [id]
+  );
+
+  if (result.changes === 0) {
+    throw new Error('Document not found.');
+  }
+
+  return result;
+}
+
+// ========================================
+// CATEGORY FUNCTIONS
+// ========================================
+
+// GET ALL CATEGORIES
+
 export async function getCategories() {
   return await db.getAllAsync(`
     SELECT categories.*, COUNT(documents.id) AS documentCount
@@ -263,29 +274,28 @@ export async function getCategories() {
   `);
 }
 
+// ADD CATEGORY
 
-// CREATE: Add a new category
 export async function addCategory(name, description) {
-  const categoryName = name.trim();
-  const categoryDescription = description.trim();
+  const categoryName = name?.trim();
+  const categoryDescription = description?.trim() || '';
 
   if (!categoryName) {
     throw new Error('Category name is required.');
   }
 
-  const result = await db.runAsync(
+  return await db.runAsync(
     `INSERT INTO categories (name, description)
      VALUES (?, ?)`,
     [categoryName, categoryDescription]
   );
-
-  return result;
 }
 
-// UPDATE: Edit an existing category
+// UPDATE CATEGORY
+
 export async function updateCategory(id, name, description) {
-  const categoryName = name.trim();
-  const categoryDescription = description.trim();
+  const categoryName = name?.trim();
+  const categoryDescription = description?.trim() || '';
 
   if (!categoryName) {
     throw new Error('Category name is required.');
@@ -305,7 +315,8 @@ export async function updateCategory(id, name, description) {
   return result;
 }
 
-// DELETE: Remove a category
+// DELETE CATEGORY
+
 export async function deleteCategory(id) {
   const result = await db.runAsync(
     'DELETE FROM categories WHERE id = ?',
@@ -319,8 +330,12 @@ export async function deleteCategory(id) {
   return result;
 }
 
+// ========================================
+// DASHBOARD FUNCTIONS
+// ========================================
 
-// Retrieve recently added documents
+// RECENT DOCUMENTS
+
 export async function getRecentDocuments() {
   return await db.getAllAsync(`
     SELECT documents.*, categories.name AS categoryName
@@ -332,7 +347,8 @@ export async function getRecentDocuments() {
   `);
 }
 
-// Retrieve dashboard statistics
+// DASHBOARD STATISTICS
+
 export async function getDashboardStats() {
   const documents = await db.getFirstAsync(
     'SELECT COUNT(*) AS total FROM documents'
@@ -351,31 +367,4 @@ export async function getDashboardStats() {
     totalCategories: categories.total,
     totalStorage: storage.total,
   };
-}
-
-// CREATE: Add a new document
-export async function addDocument(
-  name,
-  description,
-  fileType,
-  fileSize,
-  categoryId,
-  fileUri
-) {
-  const result = await db.runAsync(
-    `INSERT INTO documents
-    (name, description, fileType, fileSize, categoryId, dateAdded, fileUri)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      name.trim(),
-      description?.trim() || '',
-      fileType,
-      fileSize || 0,
-      categoryId || null,
-      new Date().toISOString(),
-      fileUri
-    ]
-  );
-
-  return result;
 }

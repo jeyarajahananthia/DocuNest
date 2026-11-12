@@ -9,6 +9,7 @@ import CategoriesScreen from '../screens/CategoriesScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DocumentDetailsScreen from '../screens/DocumentDetailsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import EditDocumentScreen from '../screens/EditDocumentScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -67,6 +68,15 @@ export default function AppNavigator() {
         component={SettingsScreen}
         options={{ title: 'Settings' }}
       />
+
+      <Stack.Screen
+        name="EditDocument"
+        component={EditDocumentScreen}
+        options={{ title: 'Edit Document' }}
+      />
+
     </Stack.Navigator>
+
+    
   );
 }

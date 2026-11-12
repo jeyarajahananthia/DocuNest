@@ -17,6 +17,36 @@ import {
   getRecentDocuments,
 } from '../database/database';
 
+// ========================================
+// FORMAT STORAGE SIZE
+// ========================================
+
+function formatStorage(bytes) {
+  const size = Number(bytes) || 0;
+
+  if (size === 0) {
+    return '0 Bytes';
+  }
+
+  if (size < 1024) {
+    return `${size} Bytes`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${(size / 1024).toFixed(2)} KB`;
+  }
+
+  if (size < 1024 * 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+// ========================================
+// HOME SCREEN
+// ========================================
+
 export default function HomeScreen({ navigation }) {
   const [stats, setStats] = useState({
     totalDocuments: 0,
@@ -27,7 +57,10 @@ export default function HomeScreen({ navigation }) {
   const [recentDocuments, setRecentDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load dashboard data whenever Home screen is focused
+  // ========================================
+  // LOAD DASHBOARD DATA
+  // ========================================
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -60,6 +93,10 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
+  // ========================================
+  // UI
+  // ========================================
+
   return (
     <ScrollView style={styles.container}>
 
@@ -88,28 +125,34 @@ export default function HomeScreen({ navigation }) {
       ) : (
         <View style={styles.statsContainer}>
 
+          {/* Total Documents */}
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
               {stats.totalDocuments}
             </Text>
+
             <Text style={styles.statLabel}>
               Documents
             </Text>
           </View>
 
+          {/* Total Categories */}
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
               {stats.totalCategories}
             </Text>
+
             <Text style={styles.statLabel}>
               Categories
             </Text>
           </View>
 
+          {/* Total Storage */}
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              {Number(stats.totalStorage || 0).toFixed(2)} MB
+            <Text style={styles.storageNumber}>
+              {formatStorage(stats.totalStorage)}
             </Text>
+
             <Text style={styles.statLabel}>
               Storage Used
             </Text>
@@ -138,9 +181,9 @@ export default function HomeScreen({ navigation }) {
           style={styles.quickButton}
           onPress={() => navigation.navigate('AddDocument')}
         >
-        <Text style={styles.quickButtonText}>
-          📁 Import Document
-        </Text>
+          <Text style={styles.quickButtonText}>
+            📁 Import Document
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -178,10 +221,13 @@ export default function HomeScreen({ navigation }) {
       </Text>
 
       {loading ? (
-        <ActivityIndicator size="small" color="#34495E" />
+        <ActivityIndicator
+          size="small"
+          color="#34495E"
+        />
       ) : recentDocuments.length === 0 ? (
         <Text style={styles.emptyText}>
-          No documents available.
+          No documents available. Import your first document!
         </Text>
       ) : (
         recentDocuments.map((item) => (
@@ -205,6 +251,10 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.documentInfo}>
               Type: {item.fileType || 'Unknown'}
             </Text>
+
+            <Text style={styles.documentInfo}>
+              Size: {formatStorage(item.fileSize)}
+            </Text>
           </TouchableOpacity>
         ))
       )}
@@ -214,6 +264,10 @@ export default function HomeScreen({ navigation }) {
     </ScrollView>
   );
 }
+
+// ========================================
+// STYLES
+// ========================================
 
 const styles = StyleSheet.create({
   container: {
@@ -266,13 +320,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     elevation: 2,
   },
 
   statNumber: {
-    fontSize: 20,
+    fontSize: 23,
     fontWeight: 'bold',
     color: '#34495E',
+  },
+
+  storageNumber: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#34495E',
+    textAlign: 'center',
   },
 
   statLabel: {
@@ -298,6 +360,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+
+  quickButton: {
+    backgroundColor: '#34495E',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+
+  quickButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
 
   documentCard: {
@@ -327,17 +403,4 @@ const styles = StyleSheet.create({
     padding: 15,
     textAlign: 'center',
   },
-  quickButton: {
-  backgroundColor: '#34495E',
-  padding: 15,
-  borderRadius: 10,
-  marginBottom: 10,
-  alignItems: 'center',
-},
-
-quickButtonText: {
-  color: '#FFFFFF',
-  fontWeight: 'bold',
-  fontSize: 15,
-},
 });
