@@ -15,7 +15,6 @@ The application uses a local SQLite database and is designed to work offline, al
 
 ## ✨ Main Features
 
-- **User Authentication** – Register and log in to the application.
 - **Dashboard** – View an overview of documents and categories.
 - **Document Upload** – Import documents from the device.
 - **Document Categorization** – Organize documents into different categories.
@@ -24,7 +23,7 @@ The application uses a local SQLite database and is designed to work offline, al
 - **Filter Documents** – Filter documents by category or file type.
 - **Edit Documents** – Update document information.
 - **Delete Documents** – Remove unwanted documents.
-- **Profile Management** – View and update user profile details.
+- **Create new file** – create new file rather than upload.
 - **Offline Access** – Manage documents without an internet connection.
 
 ## 🛠️ Technologies Used
@@ -42,14 +41,13 @@ The application uses a local SQLite database and is designed to work offline, al
 
 ## 📱 Application Screens
 
-1. Login Screen
-2. Registration Screen
-3. Dashboard Screen
-4. Categories Screen
-5. Documents Screen
-6. Document Details Screen
-7. Profile Screen
-
+1. Dashboard Screen
+2. Categories Screen
+3. Documents Screen
+4. Document Details Screen
+5. Create new file screen
+ 
+ 
 ## 📂 Project Structure
 
 ```text
