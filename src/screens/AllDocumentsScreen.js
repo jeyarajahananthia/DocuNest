@@ -13,21 +13,16 @@ import {
   Platform,
 } from 'react-native';
 
-import * as DocumentPicker from 'expo-document-picker';
-import { File, Directory, Paths } from 'expo-file-system';
-
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
+  getAllDocuments,
   getCategories,
-  addDocument,
+  deleteDocument,
 } from '../database/database';
 
-// Maximum file size for browser testing: 5 MB
-const MAX_WEB_FILE_SIZE = 5 * 1024 * 1024;
-
 // ========================================
-// DISPLAY FILE SIZE
+// FORMAT FILE SIZE
 // ========================================
 
 function formatFileSize(bytes) {
@@ -49,7 +44,7 @@ function formatFileSize(bytes) {
 }
 
 // ========================================
-// DISPLAY MESSAGES
+// SHOW MESSAGE
 // ========================================
 
 function showMessage(title, message) {
@@ -61,267 +56,222 @@ function showMessage(title, message) {
 }
 
 // ========================================
-// CONVERT BROWSER FILE TO BASE64
+// ALL DOCUMENTS SCREEN
 // ========================================
 
-function convertFileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+export default function AllDocumentsScreen({ navigation }) {
 
-    reader.onload = () => resolve(reader.result);
-
-    reader.onerror = () => {
-      reject(new Error('Unable to read the selected file.'));
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
-// ========================================
-// ADD DOCUMENT SCREEN
-// ========================================
-
-export default function AddDocumentScreen({ navigation }) {
+  const [documents, setDocuments] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // ========================================
-  // LOAD CATEGORIES
+  // LOAD DOCUMENTS AND CATEGORIES
   // ========================================
+
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+
+      const [documentData, categoryData] = await Promise.all([
+        getAllDocuments(),
+        getCategories(),
+      ]);
+
+      setDocuments(documentData || []);
+      setCategories(categoryData || []);
+
+    } catch (error) {
+      console.error('Loading documents error:', error);
+      showMessage('Error', 'Unable to load documents.');
+
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-
-      async function loadCategories() {
-        try {
-          const data = await getCategories();
-
-          if (active) {
-            setCategories(data);
-          }
-        } catch (error) {
-          console.error('Category loading error:', error);
-          showMessage('Error', 'Unable to load categories.');
-        }
-      }
-
-      loadCategories();
-
-      return () => {
-        active = false;
-      };
+      loadDocuments();
     }, [])
   );
 
   // ========================================
-  // SELECT DOCUMENT
+  // SEARCH AND CATEGORY FILTER
   // ========================================
 
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
+  const filteredDocuments = documents.filter((document) => {
 
-      if (result.canceled) {
-        return;
+    const matchesSearch =
+      (document.name || '')
+        .toLowerCase()
+        .includes(searchText.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === 'All' ||
+      String(document.categoryId) === String(selectedCategory);
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // ========================================
+  // DELETE DOCUMENT
+  // ========================================
+
+  const handleDelete = (document) => {
+
+    const confirmDelete = async () => {
+      try {
+        await deleteDocument(document.id);
+
+        setDocuments((previousDocuments) =>
+          previousDocuments.filter(
+            (item) => item.id !== document.id
+          )
+        );
+
+        showMessage(
+          'Success',
+          'Document deleted successfully.'
+        );
+
+      } catch (error) {
+        console.error('Delete document error:', error);
+
+        showMessage(
+          'Error',
+          'Unable to delete document.'
+        );
       }
+    };
 
-      const file = result.assets[0];
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        `Are you sure you want to delete "${document.name}"?`
+      );
 
-      setSelectedFile(file);
-
-      if (!name.trim()) {
-        setName(file.name.replace(/\.[^/.]+$/, ''));
+      if (confirmed) {
+        confirmDelete();
       }
-
-    } catch (error) {
-      console.error('File selection error:', error);
-
-      showMessage(
-        'Error',
-        'Unable to select the document.'
+    } else {
+      Alert.alert(
+        'Delete Document',
+        `Are you sure you want to delete "${document.name}"?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: confirmDelete,
+          },
+        ]
       );
     }
   };
 
   // ========================================
-  // SAVE DOCUMENT
+  // DOCUMENT CARD
   // ========================================
 
-  const handleSave = async () => {
-    if (saving) return;
+  const renderDocument = (document) => {
 
-    if (!selectedFile) {
-      showMessage('Missing File', 'Please select a document.');
-      return;
-    }
+    const category = categories.find(
+      (item) =>
+        String(item.id) === String(document.categoryId)
+    );
 
-    if (!name.trim()) {
-      showMessage('Missing Name', 'Please enter a document name.');
-      return;
-    }
+    return (
+      <View
+        key={document.id}
+        style={styles.documentCard}
+      >
 
-    if (!selectedCategory) {
-      showMessage('Missing Category', 'Please select a category.');
-      return;
-    }
+        <View style={styles.documentHeader}>
 
-    let copiedFile = null;
+          <Text style={styles.documentIcon}>
+            📄
+          </Text>
 
-    try {
-      setSaving(true);
+          <View style={styles.documentInfo}>
 
-      let savedFileUri = '';
-      let fileSize = Number(selectedFile.size) || 0;
+            <Text style={styles.documentName}>
+              {document.name}
+            </Text>
 
-      console.log('Starting document save...');
-      console.log('Selected file:', selectedFile.name);
+            <Text style={styles.documentCategory}>
+              Category: {category?.name || 'Uncategorized'}
+            </Text>
 
-      // ========================================
-      // WEB STORAGE
-      // ========================================
+          </View>
 
-      if (Platform.OS === 'web') {
-        let browserFile = selectedFile.file;
+        </View>
 
-        if (!browserFile) {
-          const response = await fetch(selectedFile.uri);
-          browserFile = await response.blob();
-        }
+        {document.description ? (
+          <Text style={styles.description}>
+            {document.description}
+          </Text>
+        ) : null}
 
-        // Get actual browser file size
-        fileSize = browserFile.size;
+        <View style={styles.detailsContainer}>
 
-        if (fileSize > MAX_WEB_FILE_SIZE) {
-          showMessage(
-            'File Too Large',
-            'Please select a file smaller than 5 MB for browser testing.'
-          );
+          <Text style={styles.detailText}>
+            File Type: {document.fileType || document.type || 'FILE'}
+          </Text>
 
-          return;
-        }
+          <Text style={styles.detailText}>
+            File Size: {formatFileSize(document.fileSize)}
+          </Text>
 
-        const base64Data = await convertFileToBase64(browserFile);
+        </View>
 
-        savedFileUri = base64Data;
+        <View style={styles.buttonContainer}>
 
-        console.log('Browser file converted successfully.');
-      }
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() =>
+              navigation.navigate('DocumentDetails', {
+                documentId: document.id,
+              })
+            }
+          >
+            <Text style={styles.buttonText}>
+              View
+            </Text>
+          </TouchableOpacity>
 
-      // ========================================
-      // ANDROID / IOS STORAGE
-      // ========================================
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() =>
+              navigation.navigate('EditDocument', {
+                documentId: document.id,
+              })
+            }
+          >
+            <Text style={styles.buttonText}>
+              Edit
+            </Text>
+          </TouchableOpacity>
 
-      else {
-        const sourceFile = new File(selectedFile.uri);
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDelete(document)}
+          >
+            <Text style={styles.buttonText}>
+              Delete
+            </Text>
+          </TouchableOpacity>
 
-        // Get actual file size if picker size is unavailable
-        if (!fileSize) {
-          fileSize = Number(sourceFile.size) || 0;
-        }
+        </View>
 
-        if (!fileSize) {
-          throw new Error('Unable to determine the selected file size.');
-        }
-
-        const folder = new Directory(
-          Paths.document,
-          'DocuNestFiles'
-        );
-
-        if (!folder.exists) {
-          folder.create({
-            idempotent: true,
-            intermediates: true,
-          });
-        }
-
-        const safeName = selectedFile.name.replace(
-          /[^a-zA-Z0-9._-]/g,
-          '_'
-        );
-
-        const uniqueName = `${Date.now()}_${safeName}`;
-
-        copiedFile = new File(folder, uniqueName);
-
-        await sourceFile.copy(copiedFile);
-
-        savedFileUri = copiedFile.uri;
-
-        console.log('File copied to:', savedFileUri);
-      }
-
-      // ========================================
-      // GET FILE EXTENSION
-      // ========================================
-
-      const extension = selectedFile.name.includes('.')
-        ? selectedFile.name.split('.').pop().toUpperCase()
-        : 'FILE';
-
-      // ========================================
-      // SAVE TO SQLITE
-      // ========================================
-
-      await addDocument(
-        name.trim(),
-        description.trim(),
-        extension,
-        fileSize,
-        selectedCategory,
-        savedFileUri
-      );
-
-      console.log('Document saved successfully!');
-      console.log('Actual file size:', fileSize, 'bytes');
-
-      showMessage(
-        'Success',
-        `Document imported successfully!\nFile size: ${formatFileSize(fileSize)}`
-      );
-
-      // Clear form
-      setName('');
-      setDescription('');
-      setSelectedFile(null);
-      setSelectedCategory(null);
-
-      navigation.navigate('AllDocuments');
-
-    } catch (error) {
-      console.error('Document import error:', error);
-
-      // Remove copied file if database saving failed
-      if (copiedFile) {
-        try {
-          if (copiedFile.exists) {
-            copiedFile.delete();
-          }
-        } catch (deleteError) {
-          console.error('File cleanup error:', deleteError);
-        }
-      }
-
-      showMessage(
-        'Import Failed',
-        error.message || 'Unable to save the document.'
-      );
-
-    } finally {
-      setSaving(false);
-    }
+      </View>
+    );
   };
 
   // ========================================
@@ -329,106 +279,124 @@ export default function AddDocumentScreen({ navigation }) {
   // ========================================
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.container}
+    >
 
       <Text style={styles.title}>
-        Import Document
+        All Documents
       </Text>
 
-      {/* Select File */}
-      <TouchableOpacity
-        style={styles.fileButton}
-        onPress={pickDocument}
-        disabled={saving}
+      <Text style={styles.subtitle}>
+        Manage your imported documents
+      </Text>
+
+      {/* SEARCH */}
+
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search documents..."
+        value={searchText}
+        onChangeText={setSearchText}
+      />
+
+      {/* CATEGORY FILTER */}
+
+      <Text style={styles.sectionTitle}>
+        Filter by Category
+      </Text>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryScroll}
       >
-        <Text style={styles.fileButtonText}>
-          📁 Select Document
-        </Text>
-      </TouchableOpacity>
 
-      {/* Selected File Information */}
-      {selectedFile && (
-        <View style={styles.fileInfo}>
-          <Text style={styles.fileName}>
-            Selected: {selectedFile.name}
-          </Text>
-
-          <Text style={styles.fileSize}>
-            File Size: {formatFileSize(selectedFile.size)}
-          </Text>
-        </View>
-      )}
-
-      {/* Document Name */}
-      <Text style={styles.label}>
-        Document Name
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Enter document name"
-        value={name}
-        onChangeText={setName}
-      />
-
-      {/* Description */}
-      <Text style={styles.label}>
-        Description
-      </Text>
-
-      <TextInput
-        style={[styles.input, styles.description]}
-        placeholder="Enter document description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-
-      {/* Categories */}
-      <Text style={styles.label}>
-        Select Category
-      </Text>
-
-      {categories.map((category) => (
         <TouchableOpacity
-          key={category.id}
           style={[
-            styles.categoryButton,
-            selectedCategory === category.id &&
-              styles.selectedCategory,
+            styles.filterButton,
+            selectedCategory === 'All' &&
+              styles.selectedFilter,
           ]}
-          onPress={() => setSelectedCategory(category.id)}
-          disabled={saving}
+          onPress={() => setSelectedCategory('All')}
         >
           <Text
             style={[
-              styles.categoryText,
-              selectedCategory === category.id &&
-                styles.selectedCategoryText,
+              styles.filterText,
+              selectedCategory === 'All' &&
+                styles.selectedFilterText,
             ]}
           >
-            {category.name}
+            All
           </Text>
         </TouchableOpacity>
-      ))}
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[
-          styles.saveButton,
-          saving && styles.disabledButton,
-        ]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.saveButtonText}>
-            Save Document
+        {categories.map((category) => (
+
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.filterButton,
+              String(selectedCategory) === String(category.id) &&
+                styles.selectedFilter,
+            ]}
+            onPress={() => setSelectedCategory(category.id)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                String(selectedCategory) === String(category.id) &&
+                  styles.selectedFilterText,
+              ]}
+            >
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+
+        ))}
+
+      </ScrollView>
+
+      {/* DOCUMENT COUNT */}
+
+      <Text style={styles.countText}>
+        {filteredDocuments.length} Document(s) Found
+      </Text>
+
+      {/* LOADING */}
+
+      {loading ? (
+
+        <ActivityIndicator
+          size="large"
+          color="#34495E"
+          style={styles.loader}
+        />
+
+      ) : filteredDocuments.length === 0 ? (
+
+        <View style={styles.emptyContainer}>
+
+          <Text style={styles.emptyIcon}>
+            📂
           </Text>
-        )}
-      </TouchableOpacity>
+
+          <Text style={styles.emptyTitle}>
+            No Documents Found
+          </Text>
+
+          <Text style={styles.emptyText}>
+            Import a document or try a different search.
+          </Text>
+
+        </View>
+
+      ) : (
+
+        filteredDocuments.map(renderDocument)
+
+      )}
 
     </ScrollView>
   );
@@ -439,107 +407,193 @@ export default function AddDocumentScreen({ navigation }) {
 // ========================================
 
 const styles = StyleSheet.create({
+
+  screen: {
+    flex: 1,
+    backgroundColor: '#F4F6F8',
+  },
+
   container: {
     padding: 20,
-    backgroundColor: '#F4F6F8',
-    flexGrow: 1,
+    paddingBottom: 40,
   },
 
   title: {
-    fontSize: 25,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#34495E',
-    marginBottom: 25,
   },
 
-  fileButton: {
-    backgroundColor: '#34495E',
-    padding: 16,
+  subtitle: {
+    color: '#7F8C8D',
+    marginTop: 5,
+    marginBottom: 20,
+  },
+
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    padding: 14,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D5D8DC',
+    marginBottom: 20,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#34495E',
+    marginBottom: 10,
+  },
+
+  categoryScroll: {
+    marginBottom: 15,
+  },
+
+  filterButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#D5D8DC',
+  },
+
+  selectedFilter: {
+    backgroundColor: '#34495E',
+    borderColor: '#34495E',
+  },
+
+  filterText: {
+    color: '#34495E',
+    fontWeight: '500',
+  },
+
+  selectedFilterText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+
+  countText: {
+    color: '#7F8C8D',
+    marginBottom: 15,
+    fontWeight: '600',
+  },
+
+  documentCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 15,
+    elevation: 2,
+  },
+
+  documentHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
 
-  fileButtonText: {
-    color: '#FFFFFF',
+  documentIcon: {
+    fontSize: 30,
+    marginRight: 12,
+  },
+
+  documentInfo: {
+    flex: 1,
+  },
+
+  documentName: {
+    fontSize: 17,
     fontWeight: 'bold',
-    fontSize: 16,
-  },
-
-  fileInfo: {
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    marginTop: 15,
-    borderRadius: 8,
-  },
-
-  fileName: {
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-
-  fileSize: {
-    color: '#34495E',
-    marginTop: 4,
-  },
-
-  label: {
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 8,
     color: '#34495E',
   },
 
-  input: {
-    backgroundColor: '#FFFFFF',
-    padding: 13,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D5D8DC',
+  documentCategory: {
+    color: '#7F8C8D',
+    marginTop: 5,
   },
 
   description: {
-    height: 90,
-    textAlignVertical: 'top',
+    color: '#566573',
+    marginTop: 12,
   },
 
-  categoryButton: {
+  detailsContainer: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#ECF0F1',
+  },
+
+  detailText: {
+    color: '#566573',
+    fontSize: 13,
+    marginBottom: 5,
+  },
+
+  buttonContainer: {
+    flexDirection: 'row',
+    marginTop: 15,
+    gap: 8,
+  },
+
+  viewButton: {
+    flex: 1,
+    backgroundColor: '#3498DB',
+    padding: 11,
+    borderRadius: 7,
+    alignItems: 'center',
+  },
+
+  editButton: {
+    flex: 1,
+    backgroundColor: '#F39C12',
+    padding: 11,
+    borderRadius: 7,
+    alignItems: 'center',
+  },
+
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#E74C3C',
+    padding: 11,
+    borderRadius: 7,
+    alignItems: 'center',
+  },
+
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+
+  loader: {
+    marginTop: 40,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 35,
     backgroundColor: '#FFFFFF',
-    padding: 13,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#D5D8DC',
+    borderRadius: 12,
+    marginTop: 10,
   },
 
-  selectedCategory: {
-    backgroundColor: '#D6EAF8',
-    borderColor: '#3498DB',
+  emptyIcon: {
+    fontSize: 45,
+    marginBottom: 12,
   },
 
-  categoryText: {
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#34495E',
   },
 
-  selectedCategoryText: {
-    fontWeight: 'bold',
+  emptyText: {
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginTop: 8,
   },
 
-  saveButton: {
-    backgroundColor: '#27AE60',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 25,
-    marginBottom: 30,
-  },
-
-  disabledButton: {
-    opacity: 0.6,
-  },
-
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
 });
