@@ -233,18 +233,7 @@ export default function AllDocumentsScreen({ navigation }) {
 
         <View style={styles.buttonContainer}>
 
-          <TouchableOpacity
-            style={styles.viewButton}
-            onPress={() =>
-              navigation.navigate('DocumentDetails', {
-                documentId: document.id,
-              })
-            }
-          >
-            <Text style={styles.buttonText}>
-              View
-            </Text>
-          </TouchableOpacity>
+          
 
           <TouchableOpacity
             style={styles.editButton}

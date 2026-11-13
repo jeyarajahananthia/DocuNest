@@ -33,6 +33,7 @@ export async function initializeDatabase() {
       dateAdded TEXT NOT NULL,
       fileUri TEXT,
       isFavorite INTEGER DEFAULT 0,
+      content TEXT,
       FOREIGN KEY (categoryId)
         REFERENCES categories(id)
         ON DELETE SET NULL
@@ -47,11 +48,31 @@ export async function initializeDatabase() {
     );
   `);
 
+  // Check and add content column for existing databases
+  const documentColumns = await db.getAllAsync(
+    'PRAGMA table_info(documents)'
+  );
+
+  const hasContentColumn = documentColumns.some(
+    column => column.name === 'content'
+  );
+
+  if (!hasContentColumn) {
+    await db.execAsync(`
+      ALTER TABLE documents
+      ADD COLUMN content TEXT;
+    `);
+
+    console.log('Rich text content column added!');
+  }
+
   // Remove old sample documents only once
   await removeOldSampleDocuments();
 
   // Insert default categories
   await seedCategories();
+
+  console.log('DocuNest database initialized!');
 
   return db;
 }
@@ -68,7 +89,6 @@ async function removeOldSampleDocuments() {
     ['remove_sample_documents_v1']
   );
 
-  // Do not repeat this cleanup on future app launches
   if (migration) return;
 
   const sampleNames = [
@@ -106,7 +126,7 @@ async function removeOldSampleDocuments() {
 }
 
 // ========================================
-// SEED DEFAULT CATEGORIES ONLY
+// SEED DEFAULT CATEGORIES
 // ========================================
 
 async function seedCategories() {
@@ -140,8 +160,6 @@ async function seedCategories() {
       [category.name, category.description]
     );
   }
-
-  console.log('DocuNest categories initialized!');
 }
 
 // ========================================
@@ -174,6 +192,7 @@ export async function getDocumentById(id) {
 }
 
 // ADD DOCUMENT
+// Content is optional to preserve file import functionality.
 
 export async function addDocument(
   name,
@@ -181,7 +200,8 @@ export async function addDocument(
   fileType,
   fileSize,
   categoryId,
-  fileUri
+  fileUri,
+  content = null
 ) {
   if (!name || !name.trim()) {
     throw new Error('Document name is required.');
@@ -193,8 +213,9 @@ export async function addDocument(
 
   const result = await db.runAsync(
     `INSERT INTO documents
-     (name, description, fileType, fileSize, categoryId, dateAdded, fileUri)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+     (name, description, fileType, fileSize,
+      categoryId, dateAdded, fileUri, content)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       name.trim(),
       description?.trim() || '',
@@ -203,6 +224,7 @@ export async function addDocument(
       categoryId || null,
       new Date().toISOString(),
       fileUri || null,
+      content,
     ]
   );
 
@@ -210,30 +232,52 @@ export async function addDocument(
 }
 
 // UPDATE DOCUMENT
+// Content is optional to preserve existing edit functionality.
 
 export async function updateDocument(
   id,
   name,
   description,
-  categoryId
+  categoryId,
+  content
 ) {
   if (!name || !name.trim()) {
     throw new Error('Document name is required.');
   }
 
-  const result = await db.runAsync(
-    `UPDATE documents
-     SET name = ?,
-         description = ?,
-         categoryId = ?
-     WHERE id = ?`,
-    [
-      name.trim(),
-      description?.trim() || '',
-      categoryId || null,
-      id,
-    ]
-  );
+  let result;
+
+  if (content !== undefined) {
+    result = await db.runAsync(
+      `UPDATE documents
+       SET name = ?,
+           description = ?,
+           categoryId = ?,
+           content = ?
+       WHERE id = ?`,
+      [
+        name.trim(),
+        description?.trim() || '',
+        categoryId || null,
+        content,
+        id,
+      ]
+    );
+  } else {
+    result = await db.runAsync(
+      `UPDATE documents
+       SET name = ?,
+           description = ?,
+           categoryId = ?
+       WHERE id = ?`,
+      [
+        name.trim(),
+        description?.trim() || '',
+        categoryId || null,
+        id,
+      ]
+    );
+  }
 
   if (result.changes === 0) {
     throw new Error('Document not found.');

@@ -125,7 +125,6 @@ export default function HomeScreen({ navigation }) {
       ) : (
         <View style={styles.statsContainer}>
 
-          {/* Total Documents */}
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
               {stats.totalDocuments}
@@ -136,7 +135,6 @@ export default function HomeScreen({ navigation }) {
             </Text>
           </View>
 
-          {/* Total Categories */}
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>
               {stats.totalCategories}
@@ -147,7 +145,6 @@ export default function HomeScreen({ navigation }) {
             </Text>
           </View>
 
-          {/* Total Storage */}
           <View style={styles.statCard}>
             <Text style={styles.storageNumber}>
               {formatStorage(stats.totalStorage)}
@@ -161,7 +158,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       )}
 
-      {/* Quick Access Menu */}
+      {/* Quick Access */}
       <Text style={styles.sectionTitle}>
         Quick Access
       </Text>
@@ -170,7 +167,7 @@ export default function HomeScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => navigation.navigate('AllDocuments')}
+          onPress={() => navigation.navigate('Documents')}
         >
           <Text style={styles.menuButtonText}>
             📁 All Documents
@@ -182,34 +179,16 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate('AddDocument')}
         >
           <Text style={styles.quickButtonText}>
-            📁 Import Document
+            📥 Import Document
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Categories')}
+          style={styles.createButton}
+          onPress={() => navigation.navigate('Create')}
         >
           <Text style={styles.menuButtonText}>
-            📂 Categories
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Text style={styles.menuButtonText}>
-            🔍 Search Documents
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Settings')}
-        >
-          <Text style={styles.menuButtonText}>
-            ⚙️ Settings
+            📝 Create New Document
           </Text>
         </TouchableOpacity>
 
@@ -227,7 +206,7 @@ export default function HomeScreen({ navigation }) {
         />
       ) : recentDocuments.length === 0 ? (
         <Text style={styles.emptyText}>
-          No documents available. Import your first document!
+          No documents available. Import or create your first document!
         </Text>
       ) : (
         recentDocuments.map((item) => (
@@ -363,10 +342,9 @@ const styles = StyleSheet.create({
   },
 
   quickButton: {
-    backgroundColor: '#34495E',
+    backgroundColor: '#2980B9',
     padding: 15,
     borderRadius: 10,
-    marginBottom: 10,
     alignItems: 'center',
   },
 
@@ -374,6 +352,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 15,
+  },
+
+  createButton: {
+    backgroundColor: '#27AE60',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
   },
 
   documentCard: {
