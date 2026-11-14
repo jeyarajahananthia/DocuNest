@@ -329,9 +329,17 @@ const styles = StyleSheet.create({
 
   menuButton: {
     backgroundColor: '#34495E',
-    padding: 16,
-    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 58,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
 
   menuButtonText: {
@@ -343,9 +351,17 @@ const styles = StyleSheet.create({
 
   quickButton: {
     backgroundColor: '#2980B9',
-    padding: 15,
-    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 58,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
 
   quickButtonText: {
@@ -356,9 +372,17 @@ const styles = StyleSheet.create({
 
   createButton: {
     backgroundColor: '#27AE60',
-    padding: 16,
-    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 58,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
 
   documentCard: {
