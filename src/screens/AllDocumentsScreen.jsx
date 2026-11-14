@@ -25,8 +25,13 @@ import {
 // FORMAT FILE SIZE
 // ========================================
 
-function formatFileSize(bytes) {
+function formatFileSize(bytes, fileType) {
   const size = Number(bytes) || 0;
+
+  // TXT documents store character count
+  if (String(fileType || '').toUpperCase() === 'TXT') {
+    return `${size} Characters`;
+  }
 
   if (size < 1024) {
     return `${size} Bytes`;
@@ -87,7 +92,11 @@ export default function AllDocumentsScreen({ navigation }) {
 
     } catch (error) {
       console.error('Loading documents error:', error);
-      showMessage('Error', 'Unable to load documents.');
+
+      showMessage(
+        'Error',
+        'Unable to load documents.'
+      );
 
     } finally {
       setLoading(false);
@@ -119,6 +128,30 @@ export default function AllDocumentsScreen({ navigation }) {
   });
 
   // ========================================
+  // VIEW DOCUMENT
+  // ========================================
+
+  const handleView = (document) => {
+
+    navigation.navigate('DocumentDetails', {
+      document: document,
+    });
+
+  };
+
+  // ========================================
+  // EDIT DOCUMENT
+  // ========================================
+
+  const handleEdit = (document) => {
+
+    navigation.navigate('EditDocument', {
+      documentId: document.id,
+    });
+
+  };
+
+  // ========================================
   // DELETE DOCUMENT
   // ========================================
 
@@ -126,6 +159,7 @@ export default function AllDocumentsScreen({ navigation }) {
 
     const confirmDelete = async () => {
       try {
+
         await deleteDocument(document.id);
 
         setDocuments((previousDocuments) =>
@@ -140,16 +174,19 @@ export default function AllDocumentsScreen({ navigation }) {
         );
 
       } catch (error) {
+
         console.error('Delete document error:', error);
 
         showMessage(
           'Error',
           'Unable to delete document.'
         );
+
       }
     };
 
     if (Platform.OS === 'web') {
+
       const confirmed = window.confirm(
         `Are you sure you want to delete "${document.name}"?`
       );
@@ -157,7 +194,9 @@ export default function AllDocumentsScreen({ navigation }) {
       if (confirmed) {
         confirmDelete();
       }
+
     } else {
+
       Alert.alert(
         'Delete Document',
         `Are you sure you want to delete "${document.name}"?`,
@@ -173,6 +212,7 @@ export default function AllDocumentsScreen({ navigation }) {
           },
         ]
       );
+
     }
   };
 
@@ -188,15 +228,20 @@ export default function AllDocumentsScreen({ navigation }) {
     );
 
     return (
+
       <View
         key={document.id}
         style={styles.documentCard}
       >
 
+        {/* DOCUMENT HEADER */}
+
         <View style={styles.documentHeader}>
 
           <Text style={styles.documentIcon}>
-            📄
+            {String(document.fileType || '').toUpperCase() === 'TXT'
+              ? '📝'
+              : '📄'}
           </Text>
 
           <View style={styles.documentInfo}>
@@ -213,11 +258,17 @@ export default function AllDocumentsScreen({ navigation }) {
 
         </View>
 
+        {/* DESCRIPTION */}
+
         {document.description ? (
+
           <Text style={styles.description}>
             {document.description}
           </Text>
+
         ) : null}
+
+        {/* DOCUMENT DETAILS */}
 
         <View style={styles.detailsContainer}>
 
@@ -226,40 +277,61 @@ export default function AllDocumentsScreen({ navigation }) {
           </Text>
 
           <Text style={styles.detailText}>
-            File Size: {formatFileSize(document.fileSize)}
+            File Size: {formatFileSize(
+              document.fileSize,
+              document.fileType
+            )}
           </Text>
 
         </View>
 
+        {/* ACTION BUTTONS */}
+
         <View style={styles.buttonContainer}>
 
-          
+          {/* VIEW BUTTON */}
+
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() => handleView(document)}
+          >
+
+            <Text style={styles.buttonText}>
+              View
+            </Text>
+
+          </TouchableOpacity>
+
+          {/* EDIT BUTTON */}
 
           <TouchableOpacity
             style={styles.editButton}
-            onPress={() =>
-              navigation.navigate('EditDocument', {
-                documentId: document.id,
-              })
-            }
+            onPress={() => handleEdit(document)}
           >
+
             <Text style={styles.buttonText}>
               Edit
             </Text>
+
           </TouchableOpacity>
+
+          {/* DELETE BUTTON */}
 
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDelete(document)}
           >
+
             <Text style={styles.buttonText}>
               Delete
             </Text>
+
           </TouchableOpacity>
 
         </View>
 
       </View>
+
     );
   };
 
@@ -268,9 +340,11 @@ export default function AllDocumentsScreen({ navigation }) {
   // ========================================
 
   return (
+
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
     >
 
       <Text style={styles.title}>
@@ -278,7 +352,7 @@ export default function AllDocumentsScreen({ navigation }) {
       </Text>
 
       <Text style={styles.subtitle}>
-        Manage your imported documents
+        Manage your imported and created documents.
       </Text>
 
       {/* SEARCH */}
@@ -302,6 +376,8 @@ export default function AllDocumentsScreen({ navigation }) {
         style={styles.categoryScroll}
       >
 
+        {/* ALL FILTER */}
+
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -310,6 +386,7 @@ export default function AllDocumentsScreen({ navigation }) {
           ]}
           onPress={() => setSelectedCategory('All')}
         >
+
           <Text
             style={[
               styles.filterText,
@@ -319,7 +396,10 @@ export default function AllDocumentsScreen({ navigation }) {
           >
             All
           </Text>
+
         </TouchableOpacity>
+
+        {/* CATEGORY FILTERS */}
 
         {categories.map((category) => (
 
@@ -332,6 +412,7 @@ export default function AllDocumentsScreen({ navigation }) {
             ]}
             onPress={() => setSelectedCategory(category.id)}
           >
+
             <Text
               style={[
                 styles.filterText,
@@ -341,6 +422,7 @@ export default function AllDocumentsScreen({ navigation }) {
             >
               {category.name}
             </Text>
+
           </TouchableOpacity>
 
         ))}
@@ -388,6 +470,7 @@ export default function AllDocumentsScreen({ navigation }) {
       )}
 
     </ScrollView>
+
   );
 }
 

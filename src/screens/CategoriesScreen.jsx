@@ -22,7 +22,7 @@ import {
   deleteCategory,
 } from '../database/database';
 
-export default function CategoriesScreen() {
+export default function CategoriesScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +72,12 @@ export default function CategoriesScreen() {
     }, [])
   );
 
+  const openCategory = (category) => {
+    navigation.navigate('CategoryDocuments', {
+      category: category,
+    });
+  };
+
   const openAddModal = () => {
     setEditingCategory(null);
     setName('');
@@ -98,13 +104,13 @@ export default function CategoriesScreen() {
       if (editingCategory) {
         await updateCategory(
           editingCategory.id,
-          name,
-          description
+          name.trim(),
+          description.trim()
         );
 
         Alert.alert('Success', 'Category updated successfully.');
       } else {
-        await addCategory(name, description);
+        await addCategory(name.trim(), description.trim());
 
         Alert.alert('Success', 'Category created successfully.');
       }
@@ -157,8 +163,16 @@ export default function CategoriesScreen() {
 
   const renderCategory = ({ item }) => (
     <View style={styles.categoryCard}>
-      <View style={styles.categoryInfo}>
-        <Text style={styles.categoryName}>📂 {item.name}</Text>
+
+      {/* Clickable category information */}
+      <TouchableOpacity
+        style={styles.categoryInfo}
+        onPress={() => openCategory(item)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.categoryName}>
+          📂 {item.name}
+        </Text>
 
         <Text style={styles.categoryDescription}>
           {item.description || 'No description available.'}
@@ -167,8 +181,13 @@ export default function CategoriesScreen() {
         <Text style={styles.documentCount}>
           {item.documentCount || 0} documents
         </Text>
-      </View>
 
+        <Text style={styles.viewText}>
+          Tap to view documents →
+        </Text>
+      </TouchableOpacity>
+
+      {/* Edit and Delete buttons */}
       <View style={styles.actionContainer}>
         <TouchableOpacity
           style={styles.editButton}
@@ -184,6 +203,7 @@ export default function CategoriesScreen() {
           <Text style={styles.actionText}>Delete</Text>
         </TouchableOpacity>
       </View>
+
     </View>
   );
 
@@ -340,6 +360,12 @@ const styles = StyleSheet.create({
     color: '#26805B',
     marginTop: 8,
     fontWeight: 'bold',
+  },
+  viewText: {
+    fontSize: 13,
+    color: '#2980B9',
+    fontWeight: '600',
+    marginTop: 10,
   },
   actionContainer: {
     flexDirection: 'row',

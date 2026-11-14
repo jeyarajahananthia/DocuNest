@@ -244,7 +244,7 @@ export default function AddDocumentScreen({ navigation }) {
       setSelectedCategory(null);
 
       // Open All Documents
-      navigation.navigate('AllDocuments');
+      navigation.navigate('Documents');
 
     } catch (error) {
       console.error('Document import error:', error);

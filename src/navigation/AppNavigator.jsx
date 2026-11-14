@@ -13,6 +13,7 @@ import CreateDocumentScreen from '../screens/CreateDocumentScreen';
 
 // Other screens
 import AddDocumentScreen from '../screens/AddDocumentScreen';
+import CategoryDocumentsScreen from '../screens/CategoryDocumentsScreen';
 import DocumentDetailsScreen from '../screens/DocumentDetailsScreen';
 import EditDocumentScreen from '../screens/EditDocumentScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -44,89 +45,115 @@ function BottomTabs() {
         tabBarActiveTintColor: '#3498DB',
         tabBarInactiveTintColor: '#7F8C8D',
 
-        // Bottom tab bar styling
         tabBarStyle: {
           height: 65,
           paddingBottom: 8,
           paddingTop: 6,
-          paddingHorizontal: 0,
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7E9',
-          width: '100%',
         },
 
-        // Tab label styling
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
         },
 
-        // Equal width for four visible tabs
         tabBarItemStyle: {
           flex: 1,
-          width: '25%',
         },
 
         tabBarIcon: ({ color, size, focused }) => {
           let iconName;
 
-          if (route.name === 'Home') {
-            iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Documents') {
-            iconName = focused
-              ? 'document-text'
-              : 'document-text-outline';
-          } else if (route.name === 'Categories') {
-            iconName = focused ? 'folder' : 'folder-outline';
-          } else if (route.name === 'Create') {
-            iconName = focused ? 'create' : 'create-outline';
+          switch (route.name) {
+            case 'Home':
+              iconName = focused ? 'home' : 'home-outline';
+              break;
+
+            case 'Documents':
+              iconName = focused
+                ? 'document-text'
+                : 'document-text-outline';
+              break;
+
+            case 'Categories':
+              iconName = focused ? 'folder' : 'folder-outline';
+              break;
+
+            case 'Create':
+              iconName = focused ? 'create' : 'create-outline';
+              break;
+
+            default:
+              iconName = 'ellipse-outline';
           }
 
-          return iconName ? (
+          return (
             <Ionicons
               name={iconName}
               size={size}
               color={color}
             />
-          ) : null;
+          );
         },
       })}
     >
 
-      {/* Visible bottom tabs */}
+      {/* FOUR VISIBLE TABS */}
 
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'DocuNest' }}
+        options={{
+          title: 'DocuNest',
+          tabBarLabel: 'Home',
+        }}
       />
 
       <Tab.Screen
         name="Documents"
         component={AllDocumentsScreen}
-        options={{ title: 'All Documents' }}
+        options={{
+          title: 'All Documents',
+          tabBarLabel: 'Documents',
+        }}
       />
 
       <Tab.Screen
         name="Categories"
         component={CategoriesScreen}
-        options={{ title: 'Categories' }}
+        options={{
+          title: 'Categories',
+          tabBarLabel: 'Categories',
+        }}
       />
 
       <Tab.Screen
         name="Create"
         component={CreateDocumentScreen}
-        options={{ title: 'Create Document' }}
+        options={{
+          title: 'Create Document',
+          tabBarLabel: 'Create',
+        }}
       />
 
-      {/* Hidden route: bottom tabs remain visible */}
+      {/* HIDDEN TAB ROUTES */}
 
       <Tab.Screen
         name="ImportDocument"
         component={AddDocumentScreen}
         options={{
           title: 'Import Document',
+          tabBarButton: () => null,
+        }}
+      />
+
+      <Tab.Screen
+        name="CategoryDocuments"
+        component={CategoryDocumentsScreen}
+        options={{
+          title: 'Category Documents',
           tabBarButton: () => null,
         }}
       />
@@ -159,25 +186,33 @@ export default function AppNavigator() {
       <Stack.Screen
         name="MainTabs"
         component={BottomTabs}
-        options={{ headerShown: false }}
+        options={{
+          headerShown: false,
+        }}
       />
 
       <Stack.Screen
         name="DocumentDetails"
         component={DocumentDetailsScreen}
-        options={{ title: 'Document Details' }}
+        options={{
+          title: 'Document Details',
+        }}
       />
 
       <Stack.Screen
         name="EditDocument"
         component={EditDocumentScreen}
-        options={{ title: 'Edit Document' }}
+        options={{
+          title: 'Edit Document',
+        }}
       />
 
       <Stack.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: 'Settings' }}
+        options={{
+          title: 'Settings',
+        }}
       />
 
     </Stack.Navigator>

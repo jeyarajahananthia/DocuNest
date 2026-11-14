@@ -24,6 +24,9 @@ export default function DocumentDetailsScreen({ route, navigation }) {
     setDocument(route.params?.document);
   }, [route.params?.document]);
 
+  const isTextDocument =
+    String(document?.fileType || '').toUpperCase() === 'TXT';
+
   const showMessage = (title, message) => {
     if (Platform.OS === 'web') {
       window.alert(`${title}\n\n${message}`);
@@ -32,10 +35,26 @@ export default function DocumentDetailsScreen({ route, navigation }) {
     }
   };
 
-  // Open the imported document
+  // Open imported documents or show TXT content
   const openDocument = async () => {
-    if (!document?.fileUri) {
-      showMessage('File Not Found', 'This document does not have a saved file.');
+    if (!document) return;
+
+    // TXT documents are stored in SQLite, not as external files.
+    if (isTextDocument) {
+      if (!document.content || !document.content.trim()) {
+        showMessage(
+          'No Content',
+          'This text document does not contain any saved content.'
+        );
+      }
+      return;
+    }
+
+    if (!document.fileUri) {
+      showMessage(
+        'File Not Found',
+        'This document does not have a saved file.'
+      );
       return;
     }
 
@@ -43,7 +62,7 @@ export default function DocumentDetailsScreen({ route, navigation }) {
       setOpening(true);
 
       if (Platform.OS === 'web') {
-        let fileUrl = document.fileUri;
+        const fileUrl = document.fileUri;
 
         if (fileUrl.startsWith('data:')) {
           const newTab = window.open('about:blank', '_blank');
@@ -70,7 +89,10 @@ export default function DocumentDetailsScreen({ route, navigation }) {
           const newTab = window.open(fileUrl, '_blank');
 
           if (!newTab) {
-            showMessage('Popup Blocked', 'Please allow popups for DocuNest.');
+            showMessage(
+              'Popup Blocked',
+              'Please allow popups for DocuNest.'
+            );
           }
         }
 
@@ -91,7 +113,7 @@ export default function DocumentDetailsScreen({ route, navigation }) {
     }
   };
 
-  // Navigate to Edit Document screen
+  // Edit document
   const handleEdit = () => {
     navigation.navigate('EditDocument', {
       documentId: document.id,
@@ -99,60 +121,58 @@ export default function DocumentDetailsScreen({ route, navigation }) {
   };
 
   // Delete document
-  
-const handleDelete = () => {
-  const confirmDelete = async () => {
-    try {
-      setDeleting(true);
+  const handleDelete = () => {
+    const confirmDelete = async () => {
+      try {
+        setDeleting(true);
 
-      await deleteDocument(document.id);
+        await deleteDocument(document.id);
 
-      showMessage(
-        'Deleted Successfully',
-        'The document has been deleted successfully.'
+        showMessage(
+          'Deleted Successfully',
+          'The document has been deleted successfully.'
+        );
+
+        navigation.goBack();
+
+      } catch (error) {
+        console.error('Document deletion error:', error);
+
+        showMessage(
+          'Delete Failed',
+          error.message || 'Unable to delete the document.'
+        );
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'Are you sure you want to delete this file?'
       );
 
-      navigation.goBack();
-
-    } catch (error) {
-      console.error('Document deletion error:', error);
-
-      showMessage(
-        'Delete Failed',
-        error.message || 'Unable to delete the document.'
+      if (confirmed) {
+        confirmDelete();
+      }
+    } else {
+      Alert.alert(
+        'Confirm Delete',
+        'Are you sure you want to delete this file?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Yes, Delete',
+            style: 'destructive',
+            onPress: confirmDelete,
+          },
+        ]
       );
-    } finally {
-      setDeleting(false);
     }
   };
-
-  if (Platform.OS === 'web') {
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this file?'
-    );
-
-    if (confirmed) {
-      confirmDelete();
-    }
-  } else {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this file?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Yes, Delete',
-          style: 'destructive',
-          onPress: confirmDelete,
-        },
-      ]
-    );
-  }
-};
-
 
   if (!document) {
     return (
@@ -164,11 +184,16 @@ const handleDelete = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+    >
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.icon}>📄</Text>
+        <Text style={styles.icon}>
+          {isTextDocument ? '📝' : '📄'}
+        </Text>
 
         <Text style={styles.title}>
           {document.name}
@@ -179,20 +204,22 @@ const handleDelete = () => {
         </Text>
       </View>
 
-      {/* Open Document Button */}
-      <TouchableOpacity
-        style={styles.openButton}
-        onPress={openDocument}
-        disabled={opening}
-      >
-        {opening ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.openButtonText}>
-            📂 Open Document
-          </Text>
-        )}
-      </TouchableOpacity>
+      {/* Open Document Button - only for imported files */}
+      {!isTextDocument && (
+        <TouchableOpacity
+          style={styles.openButton}
+          onPress={openDocument}
+          disabled={opening}
+        >
+          {opening ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.openButtonText}>
+              📂 Open Document
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Edit Button */}
       <TouchableOpacity
@@ -220,9 +247,27 @@ const handleDelete = () => {
         )}
       </TouchableOpacity>
 
+      {/* TXT Document Content */}
+      {isTextDocument && (
+        <View style={styles.contentCard}>
+          <Text style={styles.sectionTitle}>
+            📝 Document Content
+          </Text>
+
+          {document.content && document.content.trim() ? (
+            <Text selectable style={styles.documentContent}>
+              {document.content}
+            </Text>
+          ) : (
+            <Text style={styles.emptyContent}>
+              No content has been saved in this document.
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* General Information */}
       <View style={styles.detailsCard}>
-
         <Text style={styles.sectionTitle}>
           General Information
         </Text>
@@ -258,7 +303,12 @@ const handleDelete = () => {
         <View style={styles.detailRow}>
           <Text style={styles.label}>File Size</Text>
           <Text style={styles.value}>
-            {(Number(document.fileSize || 0) / (1024 * 1024)).toFixed(2)} MB
+            {isTextDocument
+              ? `${Number(document.fileSize || 0)} characters`
+              : `${(
+                  Number(document.fileSize || 0) /
+                  (1024 * 1024)
+                ).toFixed(2)} MB`}
           </Text>
         </View>
 
@@ -277,8 +327,8 @@ const handleDelete = () => {
             {document.isFavorite ? '⭐ Yes' : 'No'}
           </Text>
         </View>
-
       </View>
+
     </ScrollView>
   );
 }
@@ -288,6 +338,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4F6F9',
     padding: 20,
+  },
+
+  scrollContent: {
+    paddingBottom: 30,
   },
 
   header: {
@@ -356,6 +410,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+
+  contentCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
+    elevation: 2,
+  },
+
+  documentContent: {
+    fontSize: 16,
+    lineHeight: 26,
+    color: '#2C3E50',
+    backgroundColor: '#F8F9FA',
+    padding: 15,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+
+  emptyContent: {
+    fontSize: 14,
+    color: '#999999',
+    fontStyle: 'italic',
   },
 
   detailsCard: {

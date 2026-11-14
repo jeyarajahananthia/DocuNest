@@ -25,12 +25,14 @@ export default function EditDocumentScreen({ route, navigation }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState(null);
+  const [content, setContent] = useState('');
+
+  const [isTextDocument, setIsTextDocument] = useState(false);
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Display messages on web and mobile
   const showMessage = (title, message) => {
     if (Platform.OS === 'web') {
       window.alert(`${title}\n\n${message}`);
@@ -62,9 +64,19 @@ export default function EditDocumentScreen({ route, navigation }) {
       setCategoryId(document.categoryId ?? null);
       setCategories(categoryList);
 
+      const isTXT =
+        String(document.fileType || '').toUpperCase() === 'TXT';
+
+      setIsTextDocument(isTXT);
+      setContent(document.content || '');
+
     } catch (error) {
       console.error('Loading error:', error);
-      showMessage('Error', 'Unable to load document details.');
+
+      showMessage(
+        'Error',
+        'Unable to load document details.'
+      );
     } finally {
       setLoading(false);
     }
@@ -73,7 +85,18 @@ export default function EditDocumentScreen({ route, navigation }) {
   // Save updated document
   const handleUpdate = async () => {
     if (!name.trim()) {
-      showMessage('Validation Error', 'Please enter a document name.');
+      showMessage(
+        'Validation Error',
+        'Please enter a document name.'
+      );
+      return;
+    }
+
+    if (isTextDocument && !content.trim()) {
+      showMessage(
+        'Validation Error',
+        'Please enter some document content.'
+      );
       return;
     }
 
@@ -82,9 +105,10 @@ export default function EditDocumentScreen({ route, navigation }) {
 
       await updateDocument(
         documentId,
-        name,
-        description,
-        categoryId
+        name.trim(),
+        description.trim(),
+        categoryId,
+        isTextDocument ? content : undefined
       );
 
       const updatedDocument = await getDocumentById(documentId);
@@ -94,16 +118,16 @@ export default function EditDocumentScreen({ route, navigation }) {
         'Document updated successfully!'
       );
 
-      // Return to Document Details with updated information
       navigation.navigate('DocumentDetails', {
         document: updatedDocument,
       });
 
     } catch (error) {
       console.error('Update error:', error);
+
       showMessage(
         'Error',
-        error.message || 'Unable to update document.'
+        error.message || 'Unable to update the document.'
       );
     } finally {
       setSaving(false);
@@ -114,7 +138,9 @@ export default function EditDocumentScreen({ route, navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#34495E" />
-        <Text style={styles.loadingText}>Loading document...</Text>
+        <Text style={styles.loadingText}>
+          Loading document...
+        </Text>
       </View>
     );
   }
@@ -126,18 +152,25 @@ export default function EditDocumentScreen({ route, navigation }) {
       keyboardShouldPersistTaps="handled"
     >
 
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerIcon}>✏️</Text>
-        <Text style={styles.title}>Edit Document</Text>
+
+        <Text style={styles.title}>
+          Edit Document
+        </Text>
+
         <Text style={styles.subtitle}>
-          Update your document information
+          Update your document information and content
         </Text>
       </View>
 
-      {/* Document Name */}
       <View style={styles.formCard}>
 
-        <Text style={styles.label}>Document Name *</Text>
+        {/* Document Name */}
+        <Text style={styles.label}>
+          Document Name *
+        </Text>
 
         <TextInput
           style={styles.input}
@@ -148,7 +181,9 @@ export default function EditDocumentScreen({ route, navigation }) {
         />
 
         {/* Description */}
-        <Text style={styles.label}>Description</Text>
+        <Text style={styles.label}>
+          Description
+        </Text>
 
         <TextInput
           style={[styles.input, styles.descriptionInput]}
@@ -161,10 +196,43 @@ export default function EditDocumentScreen({ route, navigation }) {
           textAlignVertical="top"
         />
 
+        {/* Existing TXT Content Editor */}
+        {isTextDocument && (
+          <View style={styles.editorSection}>
+
+            <Text style={styles.label}>
+              Document Content
+            </Text>
+
+            <Text style={styles.editorHint}>
+              Your existing content is loaded below. Edit it and save your changes.
+            </Text>
+
+            <TextInput
+              style={styles.contentEditor}
+              value={content}
+              onChangeText={setContent}
+              placeholder="Start writing your document..."
+              placeholderTextColor="#999"
+              multiline
+              textAlignVertical="top"
+              scrollEnabled={false}
+            />
+
+            <Text style={styles.characterCount}>
+              {content.length} characters
+            </Text>
+
+          </View>
+        )}
+
         {/* Categories */}
-        <Text style={styles.label}>Select Category</Text>
+        <Text style={styles.label}>
+          Select Category
+        </Text>
 
         <View style={styles.categoryContainer}>
+
           <TouchableOpacity
             style={[
               styles.categoryButton,
@@ -183,7 +251,8 @@ export default function EditDocumentScreen({ route, navigation }) {
           </TouchableOpacity>
 
           {categories.map((category) => {
-            const selected = categoryId === category.id;
+            const selected =
+              String(categoryId) === String(category.id);
 
             return (
               <TouchableOpacity
@@ -205,6 +274,7 @@ export default function EditDocumentScreen({ route, navigation }) {
               </TouchableOpacity>
             );
           })}
+
         </View>
 
       </View>
@@ -286,6 +356,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#E0E6ED',
     marginTop: 8,
+    textAlign: 'center',
   },
 
   formCard: {
@@ -316,6 +387,37 @@ const styles = StyleSheet.create({
 
   descriptionInput: {
     height: 100,
+  },
+
+  editorSection: {
+    marginTop: 10,
+  },
+
+  editorHint: {
+    fontSize: 13,
+    color: '#777777',
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+
+  contentEditor: {
+    minHeight: 300,
+    borderWidth: 1,
+    borderColor: '#B8C6D3',
+    borderRadius: 8,
+    padding: 15,
+    fontSize: 16,
+    lineHeight: 25,
+    color: '#2C3E50',
+    backgroundColor: '#FFFFFF',
+    textAlignVertical: 'top',
+  },
+
+  characterCount: {
+    fontSize: 12,
+    color: '#777777',
+    textAlign: 'right',
+    marginTop: 7,
   },
 
   categoryContainer: {

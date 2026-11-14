@@ -29,6 +29,7 @@ export default function CreateDocumentScreen({ navigation }) {
   const richText = useRef(null);
 
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -58,7 +59,26 @@ export default function CreateDocumentScreen({ navigation }) {
     }
   };
 
-  // Save document
+  // Convert HTML content into readable plain text
+  const convertHtmlToText = (html) => {
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/h[1-6]>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .trim();
+  };
+
+  // Save document as TXT
   const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Missing Title', 'Please enter a document title.');
@@ -75,37 +95,34 @@ export default function CreateDocumentScreen({ navigation }) {
 
       const htmlContent = await richText.current?.getContentHtml();
 
-      const plainText = (htmlContent || '')
-        .replace(/<[^>]*>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .trim();
+      const plainText = convertHtmlToText(htmlContent || '');
 
       if (!plainText) {
         Alert.alert('Empty Document', 'Please enter some content.');
-        setSaving(false);
         return;
       }
 
       await addDocument(
         title.trim(),
-        '',
-        'RICH_TEXT',
-        0,
+        description.trim(),
+        'TXT',
+        plainText.length,
         selectedCategory.id,
-        null,
-        htmlContent
+        '',
+        plainText
       );
 
       Alert.alert(
         'Success',
-        'Your document has been saved successfully!',
+        'Your TXT document has been saved successfully!',
         [
           {
             text: 'OK',
-            onPress: () => navigation.goBack(),
+            onPress: () => navigation.navigate('Documents'),
           },
         ]
       );
+
     } catch (error) {
       console.log('Save document error:', error);
       Alert.alert('Error', 'Unable to save the document.');
@@ -125,12 +142,10 @@ export default function CreateDocumentScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
       >
-
         {/* Document Title */}
         <Text style={styles.label}>Document Title</Text>
 
@@ -139,6 +154,17 @@ export default function CreateDocumentScreen({ navigation }) {
           placeholder="Enter document title"
           value={title}
           onChangeText={setTitle}
+        />
+
+        {/* Description */}
+        <Text style={styles.label}>Description (Optional)</Text>
+
+        <TextInput
+          style={styles.descriptionInput}
+          placeholder="Enter document description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
         />
 
         {/* Category Selection */}
@@ -210,8 +236,8 @@ export default function CreateDocumentScreen({ navigation }) {
           <RichEditor
             ref={richText}
             style={styles.editor}
-            initialContentHTML="<p>Start writing your document here...</p>"
-            placeholder="Write your document..."
+            initialContentHTML=""
+            placeholder="Start writing your document here..."
             editorStyle={{
               backgroundColor: '#FFFFFF',
               color: '#222222',
@@ -235,11 +261,10 @@ export default function CreateDocumentScreen({ navigation }) {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <Text style={styles.saveButtonText}>
-              💾 Save Document
+              💾 Save TXT Document
             </Text>
           )}
         </TouchableOpacity>
-
       </ScrollView>
 
       {/* Category Selection Modal */}
@@ -251,7 +276,6 @@ export default function CreateDocumentScreen({ navigation }) {
       >
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-
             <Text style={styles.modalTitle}>
               Select Category
             </Text>
@@ -290,11 +314,9 @@ export default function CreateDocumentScreen({ navigation }) {
             >
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
-
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
@@ -336,6 +358,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+
+  descriptionInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D5D8DC',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    minHeight: 65,
+    textAlignVertical: 'top',
   },
 
   categoryButton: {
