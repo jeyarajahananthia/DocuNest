@@ -44,18 +44,28 @@ function BottomTabs() {
         tabBarActiveTintColor: '#3498DB',
         tabBarInactiveTintColor: '#7F8C8D',
 
+        // Bottom tab bar styling
         tabBarStyle: {
           height: 65,
           paddingBottom: 8,
           paddingTop: 6,
+          paddingHorizontal: 0,
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7E9',
+          width: '100%',
         },
 
+        // Tab label styling
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+        },
+
+        // Equal width for four visible tabs
+        tabBarItemStyle: {
+          flex: 1,
+          width: '25%',
         },
 
         tabBarIcon: ({ color, size, focused }) => {
@@ -64,23 +74,27 @@ function BottomTabs() {
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Documents') {
-            iconName = focused ? 'document-text' : 'document-text-outline';
+            iconName = focused
+              ? 'document-text'
+              : 'document-text-outline';
           } else if (route.name === 'Categories') {
             iconName = focused ? 'folder' : 'folder-outline';
           } else if (route.name === 'Create') {
             iconName = focused ? 'create' : 'create-outline';
           }
 
-          return (
+          return iconName ? (
             <Ionicons
               name={iconName}
               size={size}
               color={color}
             />
-          );
+          ) : null;
         },
       })}
     >
+
+      {/* Visible bottom tabs */}
 
       <Tab.Screen
         name="Home"
@@ -104,6 +118,17 @@ function BottomTabs() {
         name="Create"
         component={CreateDocumentScreen}
         options={{ title: 'Create Document' }}
+      />
+
+      {/* Hidden route: bottom tabs remain visible */}
+
+      <Tab.Screen
+        name="ImportDocument"
+        component={AddDocumentScreen}
+        options={{
+          title: 'Import Document',
+          tabBarButton: () => null,
+        }}
       />
 
     </Tab.Navigator>
@@ -135,12 +160,6 @@ export default function AppNavigator() {
         name="MainTabs"
         component={BottomTabs}
         options={{ headerShown: false }}
-      />
-
-      <Stack.Screen
-        name="AddDocument"
-        component={AddDocumentScreen}
-        options={{ title: 'Import Document' }}
       />
 
       <Stack.Screen

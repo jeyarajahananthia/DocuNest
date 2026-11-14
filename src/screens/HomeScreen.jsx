@@ -176,7 +176,7 @@ export default function HomeScreen({ navigation }) {
 
         <TouchableOpacity
           style={styles.quickButton}
-          onPress={() => navigation.navigate('AddDocument')}
+          onPress={() => navigation.navigate('ImportDocument')}
         >
           <Text style={styles.quickButtonText}>
             📥 Import Document
