@@ -40,6 +40,18 @@ export async function initializeDatabase() {
     );
   `);
 
+  // Users table for offline authentication
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      passwordHash TEXT NOT NULL,
+      passwordSalt TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
+  `);
+
   // Migration tracking table
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS app_migrations (
@@ -192,7 +204,6 @@ export async function getDocumentById(id) {
 }
 
 // ADD DOCUMENT
-// Content is optional to preserve file import functionality.
 
 export async function addDocument(
   name,
@@ -232,7 +243,6 @@ export async function addDocument(
 }
 
 // UPDATE DOCUMENT
-// Content is optional to preserve existing edit functionality.
 
 export async function updateDocument(
   id,
@@ -411,4 +421,73 @@ export async function getDashboardStats() {
     totalCategories: categories.total,
     totalStorage: storage.total,
   };
+}
+
+// ========================================
+// OFFLINE AUTHENTICATION FUNCTIONS
+// ========================================
+
+// CHECK WHETHER A LOCAL ACCOUNT EXISTS
+
+export async function hasLocalAccount() {
+  const result = await db.getFirstAsync(
+    'SELECT id FROM users WHERE id = 1'
+  );
+
+  return !!result;
+}
+
+// CREATE A LOCAL ACCOUNT
+
+export async function createLocalAccount(
+  name,
+  email,
+  passwordHash,
+  passwordSalt
+) {
+  if (!name?.trim()) {
+    throw new Error('Name is required.');
+  }
+
+  if (!email?.trim()) {
+    throw new Error('Email is required.');
+  }
+
+  if (!passwordHash || !passwordSalt) {
+    throw new Error('Password security information is required.');
+  }
+
+  if (await hasLocalAccount()) {
+    throw new Error('A local account already exists.');
+  }
+
+  return await db.runAsync(
+    `INSERT INTO users
+     (id, name, email, passwordHash, passwordSalt, createdAt)
+     VALUES (1, ?, ?, ?, ?, ?)`,
+    [
+      name.trim(),
+      email.toLowerCase().trim(),
+      passwordHash,
+      passwordSalt,
+      new Date().toISOString(),
+    ]
+  );
+}
+
+// GET LOCAL ACCOUNT BY EMAIL
+
+export async function getLocalAccountByEmail(email) {
+  return await db.getFirstAsync(
+    `SELECT * FROM users WHERE email = ?`,
+    [email.toLowerCase().trim()]
+  );
+}
+
+// GET LOCAL ACCOUNT
+
+export async function getLocalAccount() {
+  return await db.getFirstAsync(
+    `SELECT * FROM users WHERE id = 1`
+  );
 }

@@ -8,55 +8,93 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Platform,
 } from 'react-native';
 
 export default function SettingsScreen({ onLogout }) {
+
+  const showMessage = (title, message) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const showAbout = () => {
-    Alert.alert(
+    showMessage(
       'About DocuNest',
       'DocuNest is a personal file organizer application developed using React Native and SQLite. It allows users to organize and manage documents locally.'
     );
   };
 
   const showStorageInfo = () => {
-    Alert.alert(
+    showMessage(
       'Storage Information',
       'DocuNest stores its document information in a local SQLite database. Imported files will also be stored locally.'
     );
   };
 
   const showOfflineInfo = () => {
-    Alert.alert(
+    showMessage(
       'Offline Mode',
       'DocuNest is designed to work offline. No internet connection is required to access locally stored information.'
     );
   };
 
-  // LOGOUT CONFIRMATION
+  // LOGOUT
   const confirmLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to log out of DocuNest?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: () => {
-            if (onLogout) {
-              onLogout();
-            }
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(
+        'Are you sure you want to log out of DocuNest?'
+      );
+
+      if (confirmed) {
+        handleLogout();
+      }
+
+    } else {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to log out of DocuNest?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: handleLogout,
+          },
+        ]
+      );
+    }
+  };
+
+  // EXECUTE LOGOUT
+  const handleLogout = async () => {
+    try {
+      if (typeof onLogout !== 'function') {
+        throw new Error('Logout function is not connected.');
+      }
+
+      await onLogout();
+
+    } catch (error) {
+      console.error('Logout failed:', error);
+
+      showMessage(
+        'Logout Error',
+        error.message || 'Unable to log out. Please try again.'
+      );
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
+
       <Text style={styles.title}>Settings</Text>
 
       <Text style={styles.subtitle}>
@@ -65,6 +103,7 @@ export default function SettingsScreen({ onLogout }) {
 
       {/* APPLICATION SETTINGS */}
       <View style={styles.section}>
+
         <Text style={styles.sectionTitle}>Application</Text>
 
         <TouchableOpacity
@@ -74,7 +113,9 @@ export default function SettingsScreen({ onLogout }) {
           <Text style={styles.settingIcon}>ℹ️</Text>
 
           <View style={styles.settingContent}>
-            <Text style={styles.settingName}>About DocuNest</Text>
+            <Text style={styles.settingName}>
+              About DocuNest
+            </Text>
             <Text style={styles.settingDescription}>
               Application information
             </Text>
@@ -108,7 +149,9 @@ export default function SettingsScreen({ onLogout }) {
           <Text style={styles.settingIcon}>📴</Text>
 
           <View style={styles.settingContent}>
-            <Text style={styles.settingName}>Offline Mode</Text>
+            <Text style={styles.settingName}>
+              Offline Mode
+            </Text>
             <Text style={styles.settingDescription}>
               Learn about offline functionality
             </Text>
@@ -116,10 +159,12 @@ export default function SettingsScreen({ onLogout }) {
 
           <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
+
       </View>
 
       {/* ACCOUNT SETTINGS */}
       <View style={styles.section}>
+
         <Text style={styles.sectionTitle}>Account</Text>
 
         <TouchableOpacity
@@ -140,15 +185,18 @@ export default function SettingsScreen({ onLogout }) {
 
           <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
+
       </View>
 
       {/* APPLICATION DETAILS */}
       <View style={styles.section}>
+
         <Text style={styles.sectionTitle}>
           Application Details
         </Text>
 
         <View style={styles.infoCard}>
+
           <Text style={styles.infoLabel}>
             Application Name
           </Text>
@@ -170,7 +218,9 @@ export default function SettingsScreen({ onLogout }) {
 
           <Text style={styles.infoLabel}>Version</Text>
           <Text style={styles.infoValue}>1.0.0</Text>
+
         </View>
+
       </View>
 
       <Text style={styles.footer}>
@@ -178,11 +228,13 @@ export default function SettingsScreen({ onLogout }) {
         {'\n'}
         Your personal file organizer
       </Text>
+
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#F4F6F9',
@@ -285,4 +337,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 30,
   },
+
 });

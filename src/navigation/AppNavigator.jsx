@@ -25,7 +25,7 @@ const Tab = createBottomTabNavigator();
 // BOTTOM TAB NAVIGATION
 // ========================================
 
-function BottomTabs() {
+function BottomTabs({ onLogout }) {
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -72,27 +72,19 @@ function BottomTabs() {
               break;
 
             case 'Documents':
-              iconName = focused
-                ? 'document-text'
-                : 'document-text-outline';
+              iconName = focused ? 'document-text' : 'document-text-outline';
               break;
 
             case 'Categories':
-              iconName = focused
-                ? 'folder'
-                : 'folder-outline';
+              iconName = focused ? 'folder' : 'folder-outline';
               break;
 
             case 'Create':
-              iconName = focused
-                ? 'create'
-                : 'create-outline';
+              iconName = focused ? 'create' : 'create-outline';
               break;
 
             case 'Settings':
-              iconName = focused
-                ? 'settings'
-                : 'settings-outline';
+              iconName = focused ? 'settings' : 'settings-outline';
               break;
 
             default:
@@ -109,8 +101,6 @@ function BottomTabs() {
         },
       })}
     >
-
-      {/* FIVE VISIBLE TABS */}
 
       <Tab.Screen
         name="Home"
@@ -150,12 +140,18 @@ function BottomTabs() {
 
       <Tab.Screen
         name="Settings"
-        component={SettingsScreen}
         options={{
           title: 'Settings',
           tabBarLabel: 'Settings',
         }}
-      />
+      >
+        {(props) => (
+          <SettingsScreen
+            {...props}
+            onLogout={onLogout}
+          />
+        )}
+      </Tab.Screen>
 
       {/* HIDDEN TAB ROUTES */}
 
@@ -185,7 +181,7 @@ function BottomTabs() {
 // MAIN STACK NAVIGATION
 // ========================================
 
-export default function AppNavigator() {
+export default function AppNavigator({ onLogout }) {
   return (
     <Stack.Navigator
       initialRouteName="MainTabs"
@@ -204,11 +200,17 @@ export default function AppNavigator() {
 
       <Stack.Screen
         name="MainTabs"
-        component={BottomTabs}
         options={{
           headerShown: false,
         }}
-      />
+      >
+        {(props) => (
+          <BottomTabs
+            {...props}
+            onLogout={onLogout}
+          />
+        )}
+      </Stack.Screen>
 
       <Stack.Screen
         name="DocumentDetails"
