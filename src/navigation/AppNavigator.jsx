@@ -10,13 +10,13 @@ import HomeScreen from '../screens/HomeScreen';
 import AllDocumentsScreen from '../screens/AllDocumentsScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CreateDocumentScreen from '../screens/CreateDocumentScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 // Other screens
 import AddDocumentScreen from '../screens/AddDocumentScreen';
 import CategoryDocumentsScreen from '../screens/CategoryDocumentsScreen';
 import DocumentDetailsScreen from '../screens/DocumentDetailsScreen';
 import EditDocumentScreen from '../screens/EditDocumentScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -78,11 +78,21 @@ function BottomTabs() {
               break;
 
             case 'Categories':
-              iconName = focused ? 'folder' : 'folder-outline';
+              iconName = focused
+                ? 'folder'
+                : 'folder-outline';
               break;
 
             case 'Create':
-              iconName = focused ? 'create' : 'create-outline';
+              iconName = focused
+                ? 'create'
+                : 'create-outline';
+              break;
+
+            case 'Settings':
+              iconName = focused
+                ? 'settings'
+                : 'settings-outline';
               break;
 
             default:
@@ -100,7 +110,7 @@ function BottomTabs() {
       })}
     >
 
-      {/* FOUR VISIBLE TABS */}
+      {/* FIVE VISIBLE TABS */}
 
       <Tab.Screen
         name="Home"
@@ -135,6 +145,15 @@ function BottomTabs() {
         options={{
           title: 'Create Document',
           tabBarLabel: 'Create',
+        }}
+      />
+
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Settings',
+          tabBarLabel: 'Settings',
         }}
       />
 
@@ -204,14 +223,6 @@ export default function AppNavigator() {
         component={EditDocumentScreen}
         options={{
           title: 'Edit Document',
-        }}
-      />
-
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
         }}
       />
 

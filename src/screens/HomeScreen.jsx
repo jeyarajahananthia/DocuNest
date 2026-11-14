@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
+
 import { useFocusEffect } from '@react-navigation/native';
 
 import {
@@ -100,7 +102,31 @@ export default function HomeScreen({ navigation }) {
   return (
     <ScrollView style={styles.container}>
 
+      {/* HOME HEADER WITH SETTINGS BUTTON */}
+
+      <View style={styles.homeHeader}>
+        <View>
+          <Text style={styles.headerTitle}>DocuNest</Text>
+          <Text style={styles.headerSubtitle}>
+            Your personal file organizer
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+          accessibilityLabel="Open Settings"
+        >
+          <Ionicons
+            name="settings-outline"
+            size={25}
+            color="#FFFFFF"
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* Welcome Section */}
+
       <View style={styles.welcomeSection}>
         <Text style={styles.welcomeTitle}>
           Welcome to DocuNest!
@@ -112,6 +138,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Dashboard Statistics */}
+
       <Text style={styles.sectionTitle}>
         Dashboard Overview
       </Text>
@@ -159,6 +186,7 @@ export default function HomeScreen({ navigation }) {
       )}
 
       {/* Quick Access */}
+
       <Text style={styles.sectionTitle}>
         Quick Access
       </Text>
@@ -195,6 +223,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Recent Documents */}
+
       <Text style={styles.sectionTitle}>
         Recent Documents
       </Text>
@@ -253,6 +282,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F4F6F8',
     padding: 15,
+  },
+
+  homeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingHorizontal: 5,
+  },
+
+  headerTitle: {
+    fontSize: 23,
+    fontWeight: 'bold',
+    color: '#34495E',
+  },
+
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#777777',
+    marginTop: 3,
+  },
+
+  settingsButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#34495E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 3,
   },
 
   welcomeSection: {
@@ -336,10 +395,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 58,
     elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
   },
 
   menuButtonText: {
@@ -358,10 +413,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 58,
     elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
   },
 
   quickButtonText: {
@@ -379,10 +430,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 58,
     elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
   },
 
   documentCard: {
