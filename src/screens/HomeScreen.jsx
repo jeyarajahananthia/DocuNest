@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   getDashboardStats,
   getRecentDocuments,
+  getLocalAccount,
 } from '../database/database';
 
 // ========================================
@@ -46,10 +47,31 @@ function formatStorage(bytes) {
 }
 
 // ========================================
+// GET GREETING BASED ON TIME
+// ========================================
+
+function getGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return 'Good morning';
+  }
+
+  if (hour < 17) {
+    return 'Good afternoon';
+  }
+
+  return 'Good evening';
+}
+
+// ========================================
 // HOME SCREEN
 // ========================================
 
 export default function HomeScreen({ navigation }) {
+
+  const [userName, setUserName] = useState('');
+
   const [stats, setStats] = useState({
     totalDocuments: 0,
     totalCategories: 0,
@@ -57,6 +79,7 @@ export default function HomeScreen({ navigation }) {
   });
 
   const [recentDocuments, setRecentDocuments] = useState([]);
+
   const [loading, setLoading] = useState(true);
 
   // ========================================
@@ -65,19 +88,30 @@ export default function HomeScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
+
       let active = true;
 
       async function loadDashboard() {
         try {
           setLoading(true);
 
+          // Get logged-in user's information
+          const account = await getLocalAccount();
+
+          // Get dashboard statistics
           const dashboardData = await getDashboardStats();
+
+          // Get recent documents
           const recentData = await getRecentDocuments();
 
           if (active) {
+            setUserName(account?.name || 'User');
+
             setStats(dashboardData);
+
             setRecentDocuments(recentData);
           }
+
         } catch (error) {
           console.error('Dashboard loading error:', error);
         } finally {
@@ -92,6 +126,7 @@ export default function HomeScreen({ navigation }) {
       return () => {
         active = false;
       };
+
     }, [])
   );
 
@@ -102,11 +137,15 @@ export default function HomeScreen({ navigation }) {
   return (
     <ScrollView style={styles.container}>
 
-      {/* HOME HEADER WITH SETTINGS BUTTON */}
+      {/* HOME HEADER */}
 
       <View style={styles.homeHeader}>
+
         <View>
-          <Text style={styles.headerTitle}>DocuNest</Text>
+          <Text style={styles.headerTitle}>
+            DocuNest
+          </Text>
+
           <Text style={styles.headerSubtitle}>
             Your personal file organizer
           </Text>
@@ -123,33 +162,41 @@ export default function HomeScreen({ navigation }) {
             color="#FFFFFF"
           />
         </TouchableOpacity>
+
       </View>
 
-      {/* Welcome Section */}
+      {/* PERSONALIZED WELCOME SECTION */}
 
       <View style={styles.welcomeSection}>
+
         <Text style={styles.welcomeTitle}>
-          Welcome to DocuNest!
+          {getGreeting()}, {userName || 'User'}! 👋
         </Text>
 
         <Text style={styles.welcomeSubtitle}>
-          Your personal file organizer
+          Welcome back to DocuNest.
+          {'\n'}
+          Your documents are organized in one place.
         </Text>
+
       </View>
 
-      {/* Dashboard Statistics */}
+      {/* DASHBOARD STATISTICS */}
 
       <Text style={styles.sectionTitle}>
         Dashboard Overview
       </Text>
 
       {loading ? (
+
         <ActivityIndicator
           size="large"
           color="#34495E"
           style={styles.loader}
         />
+
       ) : (
+
         <View style={styles.statsContainer}>
 
           <View style={styles.statCard}>
@@ -183,9 +230,10 @@ export default function HomeScreen({ navigation }) {
           </View>
 
         </View>
+
       )}
 
-      {/* Quick Access */}
+      {/* QUICK ACCESS */}
 
       <Text style={styles.sectionTitle}>
         Quick Access
@@ -222,23 +270,29 @@ export default function HomeScreen({ navigation }) {
 
       </View>
 
-      {/* Recent Documents */}
+      {/* RECENT DOCUMENTS */}
 
       <Text style={styles.sectionTitle}>
         Recent Documents
       </Text>
 
       {loading ? (
+
         <ActivityIndicator
           size="small"
           color="#34495E"
         />
+
       ) : recentDocuments.length === 0 ? (
+
         <Text style={styles.emptyText}>
           No documents available. Import or create your first document!
         </Text>
+
       ) : (
+
         recentDocuments.map((item) => (
+
           <TouchableOpacity
             key={String(item.id)}
             style={styles.documentCard}
@@ -248,6 +302,7 @@ export default function HomeScreen({ navigation }) {
               })
             }
           >
+
             <Text style={styles.documentName}>
               📄 {item.name}
             </Text>
@@ -263,8 +318,11 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.documentInfo}>
               Size: {formatStorage(item.fileSize)}
             </Text>
+
           </TouchableOpacity>
+
         ))
+
       )}
 
       <View style={{ height: 30 }} />
@@ -278,6 +336,7 @@ export default function HomeScreen({ navigation }) {
 // ========================================
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: '#F4F6F8',
@@ -331,6 +390,7 @@ const styles = StyleSheet.create({
   welcomeSubtitle: {
     fontSize: 15,
     color: '#E0E6ED',
+    lineHeight: 23,
   },
 
   sectionTitle: {
@@ -459,4 +519,6 @@ const styles = StyleSheet.create({
     padding: 15,
     textAlign: 'center',
   },
+
 });
+
