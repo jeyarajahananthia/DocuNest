@@ -25,7 +25,7 @@ import {
 import CustomMessageBox from '../components/CustomMessageBox';
 
 // Maximum file size for browser testing: 5 MB
-const MAX_WEB_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_WEB_FILE_SIZE = 20 * 1024 * 1024;
 
 // Convert browser file into a Base64 data URL
 function convertFileToBase64(file) {
