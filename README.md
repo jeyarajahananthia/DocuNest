@@ -69,6 +69,9 @@ The application uses a local SQLite database and is designed to work offline, al
 ### Categories
 ![Categories](./screenshots/categories.PNG)
 
+### Create new file
+![Create](./screenshots/create.PNG)
+
 ### Settings
 ![Settings](./screenshots/settings.PNG)
 
