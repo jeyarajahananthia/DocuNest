@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
@@ -16,14 +15,49 @@ import {
 
 import { loginUser } from '../services/authService';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // CUSTOM MESSAGE BOX STATE
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  // SHOW MESSAGE
+  const showMessage = (title, message, type = 'info') => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  // CLOSE MESSAGE BOX
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+    }));
+  };
+
+  // LOGIN
   const handleLogin = async () => {
+    if (loading) return;
+
     if (!email.trim() || !password) {
-      Alert.alert('Missing Details', 'Please enter your email and password.');
+      showMessage(
+        'Missing Details',
+        'Please enter your email and password.',
+        'error'
+      );
       return;
     }
 
@@ -35,92 +69,124 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       if (result.success) {
         onLoginSuccess?.();
       } else {
-        Alert.alert('Login Failed', result.message || 'Invalid email or password.');
+        showMessage(
+          'Login Failed',
+          result.message || 'Invalid email or password.',
+          'error'
+        );
       }
+
     } catch (error) {
-      Alert.alert('Login Error', error.message || 'Unable to log in.');
+      console.error('Login error:', error);
+
+      showMessage(
+        'Login Error',
+        error.message || 'Unable to log in. Please try again.',
+        'error'
+      );
+
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboard}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.container}>
+    <>
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <View style={styles.container}>
 
-          <Text style={styles.logo}>📁</Text>
+            <Text style={styles.logo}>📁</Text>
 
-          <Text style={styles.title}>DocuNest</Text>
+            <Text style={styles.title}>DocuNest</Text>
 
-          <Text style={styles.subtitle}>
-            Your Personal File Organizer
-          </Text>
-
-          <View style={styles.card}>
-            <Text style={styles.heading}>Welcome Back!</Text>
-
-            <Text style={styles.description}>
-              Login to access your personal documents.
+            <Text style={styles.subtitle}>
+              Your Personal File Organizer
             </Text>
 
-            <Text style={styles.label}>Email Address</Text>
+            <View style={styles.card}>
+              <Text style={styles.heading}>Welcome Back!</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Text style={styles.label}>Password</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.loginButtonText}>LOGIN</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.registerRow}>
-              <Text style={styles.registerText}>
-                Don't have an account?
+              <Text style={styles.description}>
+                Login to access your personal documents.
               </Text>
 
+              <Text style={styles.label}>Email Address</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+              />
+
+              <Text style={styles.label}>Password</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!loading}
+              />
+
               <TouchableOpacity
-                onPress={() => navigation.navigate('Register')}
+                style={[
+                  styles.loginButton,
+                  loading && styles.disabledButton,
+                ]}
+                onPress={handleLogin}
+                disabled={loading}
               >
-                <Text style={styles.registerLink}> Register</Text>
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>LOGIN</Text>
+                )}
               </TouchableOpacity>
+
+              <View style={styles.registerRow}>
+                <Text style={styles.registerText}>
+                  Don't have an account?
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Register')}
+                  disabled={loading}
+                >
+                  <Text style={styles.registerLink}> Register</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            <Text style={styles.footer}>
+              Secure • Simple • Offline
+            </Text>
+
           </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-          <Text style={styles.footer}>
-            Secure • Simple • Offline
-          </Text>
+      {/* CUSTOM MESSAGE BOX */}
 
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText="OK"
+        onConfirm={closeMessageBox}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 
@@ -204,6 +270,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
   },
 
   loginButtonText: {

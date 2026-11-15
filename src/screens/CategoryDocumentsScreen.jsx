@@ -14,11 +14,27 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { getAllDocuments } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 export default function CategoryDocumentsScreen({ route, navigation }) {
   const { category } = route.params;
 
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+    }));
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -40,6 +56,15 @@ export default function CategoryDocumentsScreen({ route, navigation }) {
           }
         } catch (error) {
           console.error('Category documents loading error:', error);
+
+          if (active) {
+            setMessageBox({
+              visible: true,
+              title: 'Loading Failed',
+              message: 'Unable to load documents. Please try again.',
+              type: 'error',
+            });
+          }
         } finally {
           if (active) {
             setLoading(false);
@@ -120,6 +145,15 @@ export default function CategoryDocumentsScreen({ route, navigation }) {
           contentContainerStyle={styles.list}
         />
       )}
+
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        onConfirm={closeMessageBox}
+        onCancel={closeMessageBox}
+      />
 
     </View>
   );

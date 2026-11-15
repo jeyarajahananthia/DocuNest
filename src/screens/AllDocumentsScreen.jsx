@@ -7,10 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -21,6 +19,8 @@ import {
   deleteDocument,
 } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 // ========================================
 // FORMAT FILE SIZE
 // ========================================
@@ -28,7 +28,6 @@ import {
 function formatFileSize(bytes, fileType) {
   const size = Number(bytes) || 0;
 
-  // TXT documents store character count
   if (String(fileType || '').toUpperCase() === 'TXT') {
     return `${size} Characters`;
   }
@@ -49,18 +48,6 @@ function formatFileSize(bytes, fileType) {
 }
 
 // ========================================
-// SHOW MESSAGE
-// ========================================
-
-function showMessage(title, message) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
-
-// ========================================
 // ALL DOCUMENTS SCREEN
 // ========================================
 
@@ -73,6 +60,81 @@ export default function AllDocumentsScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+
+  // Custom message box state
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    showCancel: false,
+    confirmText: 'OK',
+    onConfirm: null,
+  });
+
+  // ========================================
+  // CUSTOM MESSAGE
+  // ========================================
+
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      confirmText: 'OK',
+      onConfirm,
+    });
+  };
+
+  // ========================================
+  // CUSTOM CONFIRMATION
+  // ========================================
+
+  const showConfirmation = (title, message, onConfirm) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type: 'confirm',
+      showCancel: true,
+      confirmText: 'Yes, Delete',
+      onConfirm,
+    });
+  };
+
+  // ========================================
+  // CLOSE MESSAGE BOX
+  // ========================================
+
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  // ========================================
+  // CONFIRM MESSAGE BOX
+  // ========================================
+
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
+    }
+  };
 
   // ========================================
   // LOAD DOCUMENTS AND CATEGORIES
@@ -95,7 +157,8 @@ export default function AllDocumentsScreen({ navigation }) {
 
       showMessage(
         'Error',
-        'Unable to load documents.'
+        'Unable to load documents.',
+        'error'
       );
 
     } finally {
@@ -132,11 +195,9 @@ export default function AllDocumentsScreen({ navigation }) {
   // ========================================
 
   const handleView = (document) => {
-
     navigation.navigate('DocumentDetails', {
       document: document,
     });
-
   };
 
   // ========================================
@@ -144,11 +205,9 @@ export default function AllDocumentsScreen({ navigation }) {
   // ========================================
 
   const handleEdit = (document) => {
-
     navigation.navigate('EditDocument', {
       documentId: document.id,
     });
-
   };
 
   // ========================================
@@ -157,62 +216,48 @@ export default function AllDocumentsScreen({ navigation }) {
 
   const handleDelete = (document) => {
 
-    const confirmDelete = async () => {
-      try {
+    showConfirmation(
+      'Delete Document?',
+      `Are you sure you want to delete "${document.name}"? This action cannot be undone.`,
+      () => confirmDelete(document)
+    );
+  };
 
-        await deleteDocument(document.id);
+  // ========================================
+  // CONFIRM AND PERFORM DELETION
+  // ========================================
 
-        setDocuments((previousDocuments) =>
-          previousDocuments.filter(
-            (item) => item.id !== document.id
-          )
-        );
+  const confirmDelete = async (document) => {
 
-        showMessage(
-          'Success',
-          'Document deleted successfully.'
-        );
+    try {
+      setDeleting(true);
 
-      } catch (error) {
+      await deleteDocument(document.id);
 
-        console.error('Delete document error:', error);
-
-        showMessage(
-          'Error',
-          'Unable to delete document.'
-        );
-
-      }
-    };
-
-    if (Platform.OS === 'web') {
-
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${document.name}"?`
+      setDocuments((previousDocuments) =>
+        previousDocuments.filter(
+          (item) => item.id !== document.id
+        )
       );
 
-      if (confirmed) {
-        confirmDelete();
-      }
-
-    } else {
-
-      Alert.alert(
-        'Delete Document',
-        `Are you sure you want to delete "${document.name}"?`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: confirmDelete,
-          },
-        ]
+      showMessage(
+        'Deleted Successfully',
+        'The document has been deleted successfully.',
+        'success'
       );
 
+    } catch (error) {
+
+      console.error('Delete document error:', error);
+
+      showMessage(
+        'Delete Failed',
+        error.message || 'Unable to delete the document.',
+        'error'
+      );
+
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -228,13 +273,10 @@ export default function AllDocumentsScreen({ navigation }) {
     );
 
     return (
-
       <View
         key={document.id}
         style={styles.documentCard}
       >
-
-        {/* DOCUMENT HEADER */}
 
         <View style={styles.documentHeader}>
 
@@ -258,17 +300,11 @@ export default function AllDocumentsScreen({ navigation }) {
 
         </View>
 
-        {/* DESCRIPTION */}
-
         {document.description ? (
-
           <Text style={styles.description}>
             {document.description}
           </Text>
-
         ) : null}
-
-        {/* DOCUMENT DETAILS */}
 
         <View style={styles.detailsContainer}>
 
@@ -285,53 +321,41 @@ export default function AllDocumentsScreen({ navigation }) {
 
         </View>
 
-        {/* ACTION BUTTONS */}
-
         <View style={styles.buttonContainer}>
-
-          {/* VIEW BUTTON */}
 
           <TouchableOpacity
             style={styles.viewButton}
             onPress={() => handleView(document)}
+            disabled={deleting}
           >
-
             <Text style={styles.buttonText}>
               View
             </Text>
-
           </TouchableOpacity>
-
-          {/* EDIT BUTTON */}
 
           <TouchableOpacity
             style={styles.editButton}
             onPress={() => handleEdit(document)}
+            disabled={deleting}
           >
-
             <Text style={styles.buttonText}>
               Edit
             </Text>
-
           </TouchableOpacity>
-
-          {/* DELETE BUTTON */}
 
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDelete(document)}
+            disabled={deleting}
           >
-
             <Text style={styles.buttonText}>
               Delete
             </Text>
-
           </TouchableOpacity>
 
         </View>
 
       </View>
-
     );
   };
 
@@ -340,137 +364,134 @@ export default function AllDocumentsScreen({ navigation }) {
   // ========================================
 
   return (
-
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-
-      <Text style={styles.title}>
-        All Documents
-      </Text>
-
-      <Text style={styles.subtitle}>
-        Manage your imported and created documents.
-      </Text>
-
-      {/* SEARCH */}
-
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search documents..."
-        value={searchText}
-        onChangeText={setSearchText}
-      />
-
-      {/* CATEGORY FILTER */}
-
-      <Text style={styles.sectionTitle}>
-        Filter by Category
-      </Text>
-
+    <>
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoryScroll}
+        style={styles.screen}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
 
-        {/* ALL FILTER */}
+        <Text style={styles.title}>
+          All Documents
+        </Text>
 
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            selectedCategory === 'All' &&
-              styles.selectedFilter,
-          ]}
-          onPress={() => setSelectedCategory('All')}
+        <Text style={styles.subtitle}>
+          Manage your imported and created documents.
+        </Text>
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search documents..."
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+
+        <Text style={styles.sectionTitle}>
+          Filter by Category
+        </Text>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryScroll}
         >
 
-          <Text
-            style={[
-              styles.filterText,
-              selectedCategory === 'All' &&
-                styles.selectedFilterText,
-            ]}
-          >
-            All
-          </Text>
-
-        </TouchableOpacity>
-
-        {/* CATEGORY FILTERS */}
-
-        {categories.map((category) => (
-
           <TouchableOpacity
-            key={category.id}
             style={[
               styles.filterButton,
-              String(selectedCategory) === String(category.id) &&
+              selectedCategory === 'All' &&
                 styles.selectedFilter,
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => setSelectedCategory('All')}
           >
-
             <Text
               style={[
                 styles.filterText,
-                String(selectedCategory) === String(category.id) &&
+                selectedCategory === 'All' &&
                   styles.selectedFilterText,
               ]}
             >
-              {category.name}
+              All
             </Text>
-
           </TouchableOpacity>
 
-        ))}
+          {categories.map((category) => (
+
+            <TouchableOpacity
+              key={category.id}
+              style={[
+                styles.filterButton,
+                String(selectedCategory) === String(category.id) &&
+                  styles.selectedFilter,
+              ]}
+              onPress={() => setSelectedCategory(category.id)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  String(selectedCategory) === String(category.id) &&
+                    styles.selectedFilterText,
+                ]}
+              >
+                {category.name}
+              </Text>
+            </TouchableOpacity>
+
+          ))}
+
+        </ScrollView>
+
+        <Text style={styles.countText}>
+          {filteredDocuments.length} Document(s) Found
+        </Text>
+
+        {loading ? (
+
+          <ActivityIndicator
+            size="large"
+            color="#34495E"
+            style={styles.loader}
+          />
+
+        ) : filteredDocuments.length === 0 ? (
+
+          <View style={styles.emptyContainer}>
+
+            <Text style={styles.emptyIcon}>
+              📂
+            </Text>
+
+            <Text style={styles.emptyTitle}>
+              No Documents Found
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Import a document or try a different search.
+            </Text>
+
+          </View>
+
+        ) : (
+
+          filteredDocuments.map(renderDocument)
+
+        )}
 
       </ScrollView>
 
-      {/* DOCUMENT COUNT */}
+      {/* CUSTOM MESSAGE BOX */}
 
-      <Text style={styles.countText}>
-        {filteredDocuments.length} Document(s) Found
-      </Text>
-
-      {/* LOADING */}
-
-      {loading ? (
-
-        <ActivityIndicator
-          size="large"
-          color="#34495E"
-          style={styles.loader}
-        />
-
-      ) : filteredDocuments.length === 0 ? (
-
-        <View style={styles.emptyContainer}>
-
-          <Text style={styles.emptyIcon}>
-            📂
-          </Text>
-
-          <Text style={styles.emptyTitle}>
-            No Documents Found
-          </Text>
-
-          <Text style={styles.emptyText}>
-            Import a document or try a different search.
-          </Text>
-
-        </View>
-
-      ) : (
-
-        filteredDocuments.map(renderDocument)
-
-      )}
-
-    </ScrollView>
-
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        showCancel={messageBox.showCancel}
+        confirmText={messageBox.confirmText}
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 

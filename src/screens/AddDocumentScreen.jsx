@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator,
   Platform,
@@ -23,19 +22,12 @@ import {
   addDocument,
 } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 // Maximum file size for browser testing: 5 MB
 const MAX_WEB_FILE_SIZE = 5 * 1024 * 1024;
 
-// Display messages on web and mobile
-function showMessage(title, message) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-  } else {
-    Alert.alert(title, message);
-  }
-}
-
-// Convert a browser file into a Base64 data URL
+// Convert browser file into a Base64 data URL
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -60,6 +52,51 @@ export default function AddDocumentScreen({ navigation }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Custom message box state
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
+
+  // Show custom message
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
+
+  // Close message box
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  // Handle OK button
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
+    }
+  };
+
   // Load categories from SQLite
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +111,14 @@ export default function AddDocumentScreen({ navigation }) {
           }
         } catch (error) {
           console.error('Category loading error:', error);
-          showMessage('Error', 'Unable to load categories.');
+
+          if (active) {
+            showMessage(
+              'Loading Failed',
+              'Unable to load categories. Please try again.',
+              'error'
+            );
+          }
         }
       }
 
@@ -111,8 +155,9 @@ export default function AddDocumentScreen({ navigation }) {
       console.error('File selection error:', error);
 
       showMessage(
-        'Error',
-        'Unable to select the document.'
+        'Selection Failed',
+        'Unable to select the document.',
+        'error'
       );
     }
   };
@@ -126,17 +171,29 @@ export default function AddDocumentScreen({ navigation }) {
     }
 
     if (!selectedFile) {
-      showMessage('Missing File', 'Please select a document.');
+      showMessage(
+        'Missing File',
+        'Please select a document.',
+        'error'
+      );
       return;
     }
 
     if (!name.trim()) {
-      showMessage('Missing Name', 'Please enter a document name.');
+      showMessage(
+        'Missing Name',
+        'Please enter a document name.',
+        'error'
+      );
       return;
     }
 
     if (!selectedCategory) {
-      showMessage('Missing Category', 'Please select a category.');
+      showMessage(
+        'Missing Category',
+        'Please select a category.',
+        'error'
+      );
       return;
     }
 
@@ -148,7 +205,8 @@ export default function AddDocumentScreen({ navigation }) {
     ) {
       showMessage(
         'File Too Large',
-        'Please select a file smaller than 5 MB for browser testing.'
+        'Please select a file smaller than 5 MB for browser testing.',
+        'error'
       );
       return;
     }
@@ -164,11 +222,10 @@ export default function AddDocumentScreen({ navigation }) {
 
       let savedFileUri = '';
 
-      // WEB: Store the file content in SQLite
+      // WEB: Store file content in SQLite
       if (Platform.OS === 'web') {
         let browserFile = selectedFile.file;
 
-        // Fallback if the browser File object is unavailable
         if (!browserFile) {
           const response = await fetch(selectedFile.uri);
           browserFile = await response.blob();
@@ -176,13 +233,12 @@ export default function AddDocumentScreen({ navigation }) {
 
         const base64Data = await convertFileToBase64(browserFile);
 
-        // This data URL is stored in the SQLite fileUri column
         savedFileUri = base64Data;
 
         console.log('Browser file converted successfully.');
       }
 
-      // ANDROID / IOS: Copy the file into app storage
+      // ANDROID / IOS: Copy file into app storage
       else {
         const folder = new Directory(
           Paths.document,
@@ -207,7 +263,6 @@ export default function AddDocumentScreen({ navigation }) {
 
         copiedFile = new File(folder, uniqueName);
 
-        // IMPORTANT: Wait until the copy finishes
         await sourceFile.copy(copiedFile);
 
         savedFileUri = copiedFile.uri;
@@ -232,19 +287,19 @@ export default function AddDocumentScreen({ navigation }) {
 
       console.log('Document saved successfully!');
 
-      showMessage(
-        'Success',
-        'Document imported successfully!'
-      );
-
-      // Clear the form
+      // Clear form after successful save
       setName('');
       setDescription('');
       setSelectedFile(null);
       setSelectedCategory(null);
 
-      // Open All Documents
-      navigation.navigate('Documents');
+      // Show success message before navigation
+      showMessage(
+        'Import Successful!',
+        'Your document has been imported and saved successfully.',
+        'success',
+        () => navigation.navigate('Documents')
+      );
 
     } catch (error) {
       console.error('Document import error:', error);
@@ -262,7 +317,8 @@ export default function AddDocumentScreen({ navigation }) {
 
       showMessage(
         'Import Failed',
-        error.message || 'Unable to save the document.'
+        error.message || 'Unable to save the document.',
+        'error'
       );
 
     } finally {
@@ -271,108 +327,123 @@ export default function AddDocumentScreen({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
 
-      <Text style={styles.title}>
-        Import Document
-      </Text>
-
-      {/* Select File */}
-      <TouchableOpacity
-        style={styles.fileButton}
-        onPress={pickDocument}
-        disabled={saving}
-      >
-        <Text style={styles.fileButtonText}>
-          📁 Select Document
+        <Text style={styles.title}>
+          Import Document
         </Text>
-      </TouchableOpacity>
 
-      {/* Selected File Information */}
-      {selectedFile && (
-        <View style={styles.fileInfo}>
-          <Text style={styles.fileName}>
-            Selected: {selectedFile.name}
-          </Text>
-
-          <Text>
-            Size: {(fileSizeInKB(selectedFile.size)).toFixed(2)} KB
-          </Text>
-        </View>
-      )}
-
-      {/* Document Name */}
-      <Text style={styles.label}>
-        Document Name
-      </Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Enter document name"
-        value={name}
-        onChangeText={setName}
-      />
-
-      {/* Description */}
-      <Text style={styles.label}>
-        Description
-      </Text>
-
-      <TextInput
-        style={[styles.input, styles.description]}
-        placeholder="Enter document description"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-
-      {/* Categories */}
-      <Text style={styles.label}>
-        Select Category
-      </Text>
-
-      {categories.map((category) => (
+        {/* Select File */}
         <TouchableOpacity
-          key={category.id}
-          style={[
-            styles.categoryButton,
-            selectedCategory === category.id &&
-              styles.selectedCategory,
-          ]}
-          onPress={() => setSelectedCategory(category.id)}
+          style={styles.fileButton}
+          onPress={pickDocument}
           disabled={saving}
         >
-          <Text
-            style={[
-              styles.categoryText,
-              selectedCategory === category.id &&
-                styles.selectedCategoryText,
-            ]}
-          >
-            {category.name}
+          <Text style={styles.fileButtonText}>
+            📁 Select Document
           </Text>
         </TouchableOpacity>
-      ))}
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[
-          styles.saveButton,
-          saving && styles.disabledButton,
-        ]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.saveButtonText}>
-            Save Document
-          </Text>
+        {/* Selected File Information */}
+        {selectedFile && (
+          <View style={styles.fileInfo}>
+            <Text style={styles.fileName}>
+              Selected: {selectedFile.name}
+            </Text>
+
+            <Text>
+              Size: {fileSizeInKB(selectedFile.size).toFixed(2)} KB
+            </Text>
+          </View>
         )}
-      </TouchableOpacity>
 
-    </ScrollView>
+        {/* Document Name */}
+        <Text style={styles.label}>
+          Document Name
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Enter document name"
+          value={name}
+          onChangeText={setName}
+          editable={!saving}
+        />
+
+        {/* Description */}
+        <Text style={styles.label}>
+          Description
+        </Text>
+
+        <TextInput
+          style={[styles.input, styles.description]}
+          placeholder="Enter document description"
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          editable={!saving}
+        />
+
+        {/* Categories */}
+        <Text style={styles.label}>
+          Select Category
+        </Text>
+
+        {categories.map((category) => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category.id &&
+                styles.selectedCategory,
+            ]}
+            onPress={() => setSelectedCategory(category.id)}
+            disabled={saving}
+          >
+            <Text
+              style={[
+                styles.categoryText,
+                selectedCategory === category.id &&
+                  styles.selectedCategoryText,
+              ]}
+            >
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[
+            styles.saveButton,
+            saving && styles.disabledButton,
+          ]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>
+              Save Document
+            </Text>
+          )}
+        </TouchableOpacity>
+
+      </ScrollView>
+
+      {/* Custom Message Box */}
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText="OK"
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 

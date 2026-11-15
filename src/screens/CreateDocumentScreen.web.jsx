@@ -16,6 +16,8 @@ import {
   addDocument,
 } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 // ========================================
 // WEB TEXT EDITOR
 // ========================================
@@ -67,6 +69,51 @@ export default function CreateDocumentScreen({ navigation }) {
   const [saving, setSaving] = useState(false);
 
   // ========================================
+  // CUSTOM MESSAGE BOX
+  // ========================================
+
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
+
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
+
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
+    }
+  };
+
+  // ========================================
   // LOAD CATEGORIES
   // ========================================
 
@@ -85,7 +132,12 @@ export default function CreateDocumentScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Category loading error:', error);
-      window.alert('Unable to load categories.');
+
+      showMessage(
+        'Loading Failed',
+        'Unable to load categories. Please try again.',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -142,31 +194,63 @@ export default function CreateDocumentScreen({ navigation }) {
   };
 
   // ========================================
+  // CLEAR FORM
+  // ========================================
+
+  const clearForm = () => {
+    setTitle('');
+    setDescription('');
+
+    setSelectedCategory(
+      categories.length > 0 ? categories[0] : null
+    );
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = '';
+    }
+
+    savedSelection.current = null;
+  };
+
+  // ========================================
   // SAVE DOCUMENT AS TXT
   // ========================================
 
   const handleSave = async () => {
+    if (saving) return;
+
     if (!title.trim()) {
-      window.alert('Please enter a document title.');
+      showMessage(
+        'Missing Title',
+        'Please enter a document title.',
+        'error'
+      );
       return;
     }
 
     if (!selectedCategory) {
-      window.alert('Please select a category.');
+      showMessage(
+        'Missing Category',
+        'Please select a category.',
+        'error'
+      );
+      return;
+    }
+
+    const editor = editorRef.current;
+    const plainText = editor?.innerText?.trim() || '';
+
+    if (!plainText) {
+      showMessage(
+        'Empty Document',
+        'Please enter some content before saving.',
+        'error'
+      );
       return;
     }
 
     try {
       setSaving(true);
-
-      const editor = editorRef.current;
-
-      const plainText = editor?.innerText?.trim() || '';
-
-      if (!plainText) {
-        window.alert('Please enter some content.');
-        return;
-      }
 
       await addDocument(
         title.trim(),
@@ -178,28 +262,26 @@ export default function CreateDocumentScreen({ navigation }) {
         plainText
       );
 
-      window.alert('Your TXT document has been saved successfully!');
+      console.log('TXT document saved successfully!');
 
-      // Clear form
-      setTitle('');
-      setDescription('');
+      clearForm();
 
-      setSelectedCategory(
-        categories.length > 0 ? categories[0] : null
+      showMessage(
+        'Save Successful!',
+        'Your TXT document has been saved successfully.',
+        'success',
+        () => navigation.navigate('Documents')
       );
-
-      if (editorRef.current) {
-        editorRef.current.innerHTML = '';
-      }
-
-      savedSelection.current = null;
-
-      // Navigate to Documents tab
-      navigation.navigate('Documents');
 
     } catch (error) {
       console.error('Save document error:', error);
-      window.alert('Unable to save the document.');
+
+      showMessage(
+        'Save Failed',
+        error.message || 'Unable to save the document. Please try again.',
+        'error'
+      );
+
     } finally {
       setSaving(false);
     }
@@ -226,235 +308,265 @@ export default function CreateDocumentScreen({ navigation }) {
   // ========================================
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-
-        {/* Document Title */}
-
-        <Text style={styles.label}>
-          Document Title
-        </Text>
-
-        <TextInput
-          style={styles.titleInput}
-          placeholder="Enter document title"
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        {/* Description */}
-
-        <Text style={styles.label}>
-          Description (Optional)
-        </Text>
-
-        <TextInput
-          style={styles.descriptionInput}
-          placeholder="Enter document description"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-
-        {/* Category Selection */}
-
-        <Text style={styles.label}>
-          Select Category
-        </Text>
-
-        <View style={styles.categoryContainer}>
-          {categories.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No categories available. Please create a category first.
-            </Text>
-          ) : (
-            categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryChip,
-                  selectedCategory?.id === category.id &&
-                    styles.selectedCategoryChip,
-                ]}
-                onPress={() => setSelectedCategory(category)}
-              >
-                <Text
-                  style={[
-                    styles.categoryChipText,
-                    selectedCategory?.id === category.id &&
-                      styles.selectedCategoryText,
-                  ]}
-                >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        {/* Editor Heading */}
-
-        <Text style={styles.label}>
-          Write Your Document
-        </Text>
-
-        {/* Formatting Toolbar */}
-
-        <View style={styles.toolbar}>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('bold')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.boldText}>B</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('italic')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.italicText}>I</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('underline')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.underlineText}>U</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('formatBlock', 'H1')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>H1</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('formatBlock', 'H2')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>H2</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('insertUnorderedList')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>• List</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('insertOrderedList')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>1. List</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('justifyLeft')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>Left</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('justifyCenter')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>Center</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('justifyRight')}
-            onPressIn={rememberSelection}
-          >
-            <Text style={styles.toolText}>Right</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('undo')}
-          >
-            <Text style={styles.toolText}>↶</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toolButton}
-            onPress={() => applyFormatting('redo')}
-          >
-            <Text style={styles.toolText}>↷</Text>
-          </TouchableOpacity>
-
-        </View>
-
-        {/* Text Colours */}
-
-        <Text style={styles.colorLabel}>
-          Text Colour
-        </Text>
-
-        <View style={styles.colorContainer}>
-          {[
-            '#000000',
-            '#E74C3C',
-            '#3498DB',
-            '#27AE60',
-            '#8E44AD',
-            '#F39C12',
-          ].map((color) => (
-            <TouchableOpacity
-              key={color}
-              style={[
-                styles.colorButton,
-                { backgroundColor: color },
-              ]}
-              onPress={() => applyFormatting('foreColor', color)}
-              onPressIn={rememberSelection}
-            />
-          ))}
-        </View>
-
-        {/* Web Rich Text Editor */}
-
-        <View style={styles.editorContainer}>
-          <WebTextEditor editorRef={editorRef} />
-        </View>
-
-        {/* Save Button */}
-
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            saving && styles.disabledButton,
-          ]}
-          onPress={handleSave}
-          disabled={saving}
+    <>
+      <View style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>
-              💾 Save TXT Document
-            </Text>
-          )}
-        </TouchableOpacity>
 
-      </ScrollView>
-    </View>
+          {/* Document Title */}
+
+          <Text style={styles.label}>
+            Document Title
+          </Text>
+
+          <TextInput
+            style={styles.titleInput}
+            placeholder="Enter document title"
+            value={title}
+            onChangeText={setTitle}
+            editable={!saving}
+          />
+
+          {/* Description */}
+
+          <Text style={styles.label}>
+            Description (Optional)
+          </Text>
+
+          <TextInput
+            style={styles.descriptionInput}
+            placeholder="Enter document description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            editable={!saving}
+          />
+
+          {/* Category Selection */}
+
+          <Text style={styles.label}>
+            Select Category
+          </Text>
+
+          <View style={styles.categoryContainer}>
+            {categories.length === 0 ? (
+              <Text style={styles.emptyText}>
+                No categories available. Please create a category first.
+              </Text>
+            ) : (
+              categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryChip,
+                    selectedCategory?.id === category.id &&
+                      styles.selectedCategoryChip,
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                  disabled={saving}
+                >
+                  <Text
+                    style={[
+                      styles.categoryChipText,
+                      selectedCategory?.id === category.id &&
+                        styles.selectedCategoryText,
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          {/* Editor Heading */}
+
+          <Text style={styles.label}>
+            Write Your Document
+          </Text>
+
+          {/* Formatting Toolbar */}
+
+          <View style={styles.toolbar}>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('bold')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.boldText}>B</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('italic')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.italicText}>I</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('underline')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.underlineText}>U</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('formatBlock', 'H1')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>H1</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('formatBlock', 'H2')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>H2</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('insertUnorderedList')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>• List</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('insertOrderedList')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>1. List</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('justifyLeft')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>Left</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('justifyCenter')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>Center</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('justifyRight')}
+              onPressIn={rememberSelection}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>Right</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('undo')}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>↶</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toolButton}
+              onPress={() => applyFormatting('redo')}
+              disabled={saving}
+            >
+              <Text style={styles.toolText}>↷</Text>
+            </TouchableOpacity>
+
+          </View>
+
+          {/* Text Colours */}
+
+          <Text style={styles.colorLabel}>
+            Text Colour
+          </Text>
+
+          <View style={styles.colorContainer}>
+            {[
+              '#000000',
+              '#E74C3C',
+              '#3498DB',
+              '#27AE60',
+              '#8E44AD',
+              '#F39C12',
+            ].map((color) => (
+              <TouchableOpacity
+                key={color}
+                style={[
+                  styles.colorButton,
+                  { backgroundColor: color },
+                ]}
+                onPress={() => applyFormatting('foreColor', color)}
+                onPressIn={rememberSelection}
+                disabled={saving}
+              />
+            ))}
+          </View>
+
+          {/* Web Rich Text Editor */}
+
+          <View style={styles.editorContainer}>
+            <WebTextEditor editorRef={editorRef} />
+          </View>
+
+          {/* Save Button */}
+
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              saving && styles.disabledButton,
+            ]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                💾 Save TXT Document
+              </Text>
+            )}
+          </TouchableOpacity>
+
+        </ScrollView>
+      </View>
+
+      {/* CUSTOM MESSAGE BOX */}
+
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText="OK"
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 

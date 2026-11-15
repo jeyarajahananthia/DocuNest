@@ -20,6 +20,8 @@ import {
   getLocalAccount,
 } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 // ========================================
 // FORMAT STORAGE SIZE
 // ========================================
@@ -82,6 +84,32 @@ export default function HomeScreen({ navigation }) {
 
   const [loading, setLoading] = useState(true);
 
+  // CUSTOM MESSAGE BOX STATE
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  // SHOW MESSAGE
+  const showMessage = (title, message, type = 'info') => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+    });
+  };
+
+  // CLOSE MESSAGE BOX
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+    }));
+  };
+
   // ========================================
   // LOAD DASHBOARD DATA
   // ========================================
@@ -114,6 +142,15 @@ export default function HomeScreen({ navigation }) {
 
         } catch (error) {
           console.error('Dashboard loading error:', error);
+
+          if (active) {
+            showMessage(
+              'Loading Failed',
+              'Unable to load dashboard information. Please try again.',
+              'error'
+            );
+          }
+
         } finally {
           if (active) {
             setLoading(false);
@@ -135,199 +172,213 @@ export default function HomeScreen({ navigation }) {
   // ========================================
 
   return (
-    <ScrollView style={styles.container}>
+    <>
+      <ScrollView style={styles.container}>
 
-      {/* HOME HEADER */}
+        {/* HOME HEADER */}
 
-      <View style={styles.homeHeader}>
+        <View style={styles.homeHeader}>
 
-        <View>
-          <Text style={styles.headerTitle}>
-            DocuNest
-          </Text>
-
-          <Text style={styles.headerSubtitle}>
-            Your personal file organizer
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings')}
-          accessibilityLabel="Open Settings"
-        >
-          <Ionicons
-            name="settings-outline"
-            size={25}
-            color="#FFFFFF"
-          />
-        </TouchableOpacity>
-
-      </View>
-
-      {/* PERSONALIZED WELCOME SECTION */}
-
-      <View style={styles.welcomeSection}>
-
-        <Text style={styles.welcomeTitle}>
-          {getGreeting()}, {userName || 'User'}! 👋
-        </Text>
-
-        <Text style={styles.welcomeSubtitle}>
-          Welcome back to DocuNest.
-          {'\n'}
-          Your documents are organized in one place.
-        </Text>
-
-      </View>
-
-      {/* DASHBOARD STATISTICS */}
-
-      <Text style={styles.sectionTitle}>
-        Dashboard Overview
-      </Text>
-
-      {loading ? (
-
-        <ActivityIndicator
-          size="large"
-          color="#34495E"
-          style={styles.loader}
-        />
-
-      ) : (
-
-        <View style={styles.statsContainer}>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              {stats.totalDocuments}
+          <View>
+            <Text style={styles.headerTitle}>
+              DocuNest
             </Text>
 
-            <Text style={styles.statLabel}>
-              Documents
+            <Text style={styles.headerSubtitle}>
+              Your personal file organizer
             </Text>
           </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              {stats.totalCategories}
-            </Text>
-
-            <Text style={styles.statLabel}>
-              Categories
-            </Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.storageNumber}>
-              {formatStorage(stats.totalStorage)}
-            </Text>
-
-            <Text style={styles.statLabel}>
-              Storage Used
-            </Text>
-          </View>
-
-        </View>
-
-      )}
-
-      {/* QUICK ACCESS */}
-
-      <Text style={styles.sectionTitle}>
-        Quick Access
-      </Text>
-
-      <View style={styles.menuContainer}>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Documents')}
-        >
-          <Text style={styles.menuButtonText}>
-            📁 All Documents
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.quickButton}
-          onPress={() => navigation.navigate('ImportDocument')}
-        >
-          <Text style={styles.quickButtonText}>
-            📥 Import Document
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.createButton}
-          onPress={() => navigation.navigate('Create')}
-        >
-          <Text style={styles.menuButtonText}>
-            📝 Create New Document
-          </Text>
-        </TouchableOpacity>
-
-      </View>
-
-      {/* RECENT DOCUMENTS */}
-
-      <Text style={styles.sectionTitle}>
-        Recent Documents
-      </Text>
-
-      {loading ? (
-
-        <ActivityIndicator
-          size="small"
-          color="#34495E"
-        />
-
-      ) : recentDocuments.length === 0 ? (
-
-        <Text style={styles.emptyText}>
-          No documents available. Import or create your first document!
-        </Text>
-
-      ) : (
-
-        recentDocuments.map((item) => (
 
           <TouchableOpacity
-            key={String(item.id)}
-            style={styles.documentCard}
-            onPress={() =>
-              navigation.navigate('DocumentDetails', {
-                document: item,
-              })
-            }
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Open Settings"
           >
-
-            <Text style={styles.documentName}>
-              📄 {item.name}
-            </Text>
-
-            <Text style={styles.documentInfo}>
-              Category: {item.categoryName || 'Uncategorized'}
-            </Text>
-
-            <Text style={styles.documentInfo}>
-              Type: {item.fileType || 'Unknown'}
-            </Text>
-
-            <Text style={styles.documentInfo}>
-              Size: {formatStorage(item.fileSize)}
-            </Text>
-
+            <Ionicons
+              name="settings-outline"
+              size={25}
+              color="#FFFFFF"
+            />
           </TouchableOpacity>
 
-        ))
+        </View>
 
-      )}
+        {/* PERSONALIZED WELCOME SECTION */}
 
-      <View style={{ height: 30 }} />
+        <View style={styles.welcomeSection}>
 
-    </ScrollView>
+          <Text style={styles.welcomeTitle}>
+            {getGreeting()}, {userName || 'User'}! 👋
+          </Text>
+
+          <Text style={styles.welcomeSubtitle}>
+            Welcome back to DocuNest.
+            {'\n'}
+            Your documents are organized in one place.
+          </Text>
+
+        </View>
+
+        {/* DASHBOARD STATISTICS */}
+
+        <Text style={styles.sectionTitle}>
+          Dashboard Overview
+        </Text>
+
+        {loading ? (
+
+          <ActivityIndicator
+            size="large"
+            color="#34495E"
+            style={styles.loader}
+          />
+
+        ) : (
+
+          <View style={styles.statsContainer}>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>
+                {stats.totalDocuments}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Documents
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>
+                {stats.totalCategories}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Categories
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.storageNumber}>
+                {formatStorage(stats.totalStorage)}
+              </Text>
+
+              <Text style={styles.statLabel}>
+                Storage Used
+              </Text>
+            </View>
+
+          </View>
+
+        )}
+
+        {/* QUICK ACCESS */}
+
+        <Text style={styles.sectionTitle}>
+          Quick Access
+        </Text>
+
+        <View style={styles.menuContainer}>
+
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.navigate('Documents')}
+          >
+            <Text style={styles.menuButtonText}>
+              📁 All Documents
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickButton}
+            onPress={() => navigation.navigate('ImportDocument')}
+          >
+            <Text style={styles.quickButtonText}>
+              📥 Import Document
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => navigation.navigate('Create')}
+          >
+            <Text style={styles.menuButtonText}>
+              📝 Create New Document
+            </Text>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* RECENT DOCUMENTS */}
+
+        <Text style={styles.sectionTitle}>
+          Recent Documents
+        </Text>
+
+        {loading ? (
+
+          <ActivityIndicator
+            size="small"
+            color="#34495E"
+          />
+
+        ) : recentDocuments.length === 0 ? (
+
+          <Text style={styles.emptyText}>
+            No documents available. Import or create your first document!
+          </Text>
+
+        ) : (
+
+          recentDocuments.map((item) => (
+
+            <TouchableOpacity
+              key={String(item.id)}
+              style={styles.documentCard}
+              onPress={() =>
+                navigation.navigate('DocumentDetails', {
+                  document: item,
+                })
+              }
+            >
+
+              <Text style={styles.documentName}>
+                📄 {item.name}
+              </Text>
+
+              <Text style={styles.documentInfo}>
+                Category: {item.categoryName || 'Uncategorized'}
+              </Text>
+
+              <Text style={styles.documentInfo}>
+                Type: {item.fileType || 'Unknown'}
+              </Text>
+
+              <Text style={styles.documentInfo}>
+                Size: {formatStorage(item.fileSize)}
+              </Text>
+
+            </TouchableOpacity>
+
+          ))
+
+        )}
+
+        <View style={{ height: 30 }} />
+
+      </ScrollView>
+
+      {/* CUSTOM MESSAGE BOX */}
+
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText="OK"
+        onConfirm={closeMessageBox}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 
@@ -521,4 +572,3 @@ const styles = StyleSheet.create({
   },
 
 });
-

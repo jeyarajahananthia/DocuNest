@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   Modal,
   FlatList,
@@ -25,6 +24,8 @@ import {
   addDocument,
 } from '../database/database';
 
+import CustomMessageBox from '../components/CustomMessageBox';
+
 export default function CreateDocumentScreen({ navigation }) {
   const richText = useRef(null);
 
@@ -36,6 +37,55 @@ export default function CreateDocumentScreen({ navigation }) {
   const [categoryModal, setCategoryModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Custom message box state
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    showCancel: false,
+    confirmText: 'OK',
+    onConfirm: null,
+  });
+
+  // Show custom message
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      confirmText: 'OK',
+      onConfirm,
+    });
+  };
+
+  // Close message box
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  // Handle message confirmation
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
+    }
+  };
 
   // Load categories from SQLite
   useEffect(() => {
@@ -52,8 +102,13 @@ export default function CreateDocumentScreen({ navigation }) {
         setSelectedCategory(result[0]);
       }
     } catch (error) {
-      console.log('Category loading error:', error);
-      Alert.alert('Error', 'Unable to load categories.');
+      console.error('Category loading error:', error);
+
+      showMessage(
+        'Loading Failed',
+        'Unable to load categories. Please try again.',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -80,13 +135,23 @@ export default function CreateDocumentScreen({ navigation }) {
 
   // Save document as TXT
   const handleSave = async () => {
+    if (saving) return;
+
     if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please enter a document title.');
+      showMessage(
+        'Missing Title',
+        'Please enter a document title.',
+        'warning'
+      );
       return;
     }
 
     if (!selectedCategory) {
-      Alert.alert('Missing Category', 'Please select a category.');
+      showMessage(
+        'Missing Category',
+        'Please select a category.',
+        'warning'
+      );
       return;
     }
 
@@ -98,7 +163,11 @@ export default function CreateDocumentScreen({ navigation }) {
       const plainText = convertHtmlToText(htmlContent || '');
 
       if (!plainText) {
-        Alert.alert('Empty Document', 'Please enter some content.');
+        showMessage(
+          'Empty Document',
+          'Please enter some content before saving.',
+          'warning'
+        );
         return;
       }
 
@@ -112,20 +181,21 @@ export default function CreateDocumentScreen({ navigation }) {
         plainText
       );
 
-      Alert.alert(
-        'Success',
-        'Your TXT document has been saved successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Documents'),
-          },
-        ]
+      showMessage(
+        'Document Saved!',
+        'Your TXT document has been saved successfully.',
+        'success',
+        () => navigation.navigate('Documents')
       );
 
     } catch (error) {
-      console.log('Save document error:', error);
-      Alert.alert('Error', 'Unable to save the document.');
+      console.error('Save document error:', error);
+
+      showMessage(
+        'Save Failed',
+        error.message || 'Unable to save the document. Please try again.',
+        'error'
+      );
     } finally {
       setSaving(false);
     }
@@ -135,189 +205,223 @@ export default function CreateDocumentScreen({ navigation }) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#34495E" />
-        <Text style={styles.loadingText}>Loading categories...</Text>
+        <Text style={styles.loadingText}>
+          Loading categories...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Document Title */}
-        <Text style={styles.label}>Document Title</Text>
-
-        <TextInput
-          style={styles.titleInput}
-          placeholder="Enter document title"
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        {/* Description */}
-        <Text style={styles.label}>Description (Optional)</Text>
-
-        <TextInput
-          style={styles.descriptionInput}
-          placeholder="Enter document description"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-
-        {/* Category Selection */}
-        <Text style={styles.label}>Select Category</Text>
-
-        <TouchableOpacity
-          style={styles.categoryButton}
-          onPress={() => setCategoryModal(true)}
+    <>
+      <View style={styles.container}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
         >
-          <Text style={styles.categoryText}>
-            {selectedCategory
-              ? selectedCategory.name
-              : 'Select a category'}
+          {/* Document Title */}
+          <Text style={styles.label}>
+            Document Title
           </Text>
 
-          <Text style={styles.dropdownIcon}>▼</Text>
-        </TouchableOpacity>
-
-        {/* Formatting Toolbar */}
-        <Text style={styles.label}>Format Your Document</Text>
-
-        <View style={styles.toolbarContainer}>
-          <RichToolbar
-            editor={richText}
-            actions={[
-              actions.setBold,
-              actions.setItalic,
-              actions.setUnderline,
-              actions.heading1,
-              actions.heading2,
-              actions.insertBulletsList,
-              actions.insertOrderedList,
-              actions.alignLeft,
-              actions.alignCenter,
-              actions.alignRight,
-              actions.undo,
-              actions.redo,
-            ]}
+          <TextInput
+            style={styles.titleInput}
+            placeholder="Enter document title"
+            value={title}
+            onChangeText={setTitle}
+            editable={!saving}
           />
-        </View>
 
-        {/* Text Colour Options */}
-        <Text style={styles.colorLabel}>Text Colour</Text>
+          {/* Description */}
+          <Text style={styles.label}>
+            Description (Optional)
+          </Text>
 
-        <View style={styles.colorContainer}>
-          {[
-            '#000000',
-            '#E74C3C',
-            '#3498DB',
-            '#27AE60',
-            '#8E44AD',
-            '#F39C12',
-          ].map((color) => (
-            <TouchableOpacity
-              key={color}
-              style={[
-                styles.colorButton,
-                { backgroundColor: color },
+          <TextInput
+            style={styles.descriptionInput}
+            placeholder="Enter document description"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            editable={!saving}
+          />
+
+          {/* Category Selection */}
+          <Text style={styles.label}>
+            Select Category
+          </Text>
+
+          <TouchableOpacity
+            style={styles.categoryButton}
+            onPress={() => setCategoryModal(true)}
+            disabled={saving}
+          >
+            <Text style={styles.categoryText}>
+              {selectedCategory
+                ? selectedCategory.name
+                : 'Select a category'}
+            </Text>
+
+            <Text style={styles.dropdownIcon}>▼</Text>
+          </TouchableOpacity>
+
+          {/* Formatting Toolbar */}
+          <Text style={styles.label}>
+            Format Your Document
+          </Text>
+
+          <View style={styles.toolbarContainer}>
+            <RichToolbar
+              editor={richText}
+              actions={[
+                actions.setBold,
+                actions.setItalic,
+                actions.setUnderline,
+                actions.heading1,
+                actions.heading2,
+                actions.insertBulletsList,
+                actions.insertOrderedList,
+                actions.alignLeft,
+                actions.alignCenter,
+                actions.alignRight,
+                actions.undo,
+                actions.redo,
               ]}
-              onPress={() =>
-                richText.current?.setForeColor(color)
-              }
             />
-          ))}
-        </View>
-
-        {/* Rich Text Editor */}
-        <View style={styles.editorContainer}>
-          <RichEditor
-            ref={richText}
-            style={styles.editor}
-            initialContentHTML=""
-            placeholder="Start writing your document here..."
-            editorStyle={{
-              backgroundColor: '#FFFFFF',
-              color: '#222222',
-              placeholderColor: '#999999',
-              contentCSSText: 'font-size: 16px; padding: 10px;',
-            }}
-            useContainer={true}
-          />
-        </View>
-
-        {/* Save Button */}
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            saving && styles.disabledButton,
-          ]}
-          onPress={handleSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>
-              💾 Save TXT Document
-            </Text>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Category Selection Modal */}
-      <Modal
-        visible={categoryModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setCategoryModal(false)}
-      >
-        <View style={styles.modalBackground}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>
-              Select Category
-            </Text>
-
-            {categories.length === 0 ? (
-              <Text style={styles.emptyText}>
-                No categories available. Please create a category first.
-              </Text>
-            ) : (
-              <FlatList
-                data={categories}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.categoryItem}
-                    onPress={() => {
-                      setSelectedCategory(item);
-                      setCategoryModal(false);
-                    }}
-                  >
-                    <Text style={styles.categoryItemText}>
-                      {item.name}
-                    </Text>
-
-                    {selectedCategory?.id === item.id && (
-                      <Text style={styles.checkMark}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setCategoryModal(false)}
-            >
-              <Text style={styles.closeButtonText}>Close</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-    </View>
+
+          {/* Text Colour Options */}
+          <Text style={styles.colorLabel}>
+            Text Colour
+          </Text>
+
+          <View style={styles.colorContainer}>
+            {[
+              '#000000',
+              '#E74C3C',
+              '#3498DB',
+              '#27AE60',
+              '#8E44AD',
+              '#F39C12',
+            ].map((color) => (
+              <TouchableOpacity
+                key={color}
+                style={[
+                  styles.colorButton,
+                  { backgroundColor: color },
+                ]}
+                onPress={() =>
+                  richText.current?.setForeColor(color)
+                }
+                disabled={saving}
+              />
+            ))}
+          </View>
+
+          {/* Rich Text Editor */}
+          <View style={styles.editorContainer}>
+            <RichEditor
+              ref={richText}
+              style={styles.editor}
+              initialContentHTML=""
+              placeholder="Start writing your document here..."
+              editorStyle={{
+                backgroundColor: '#FFFFFF',
+                color: '#222222',
+                placeholderColor: '#999999',
+                contentCSSText: 'font-size: 16px; padding: 10px;',
+              }}
+              useContainer={true}
+            />
+          </View>
+
+          {/* Save Button */}
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              saving && styles.disabledButton,
+            ]}
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>
+                💾 Save TXT Document
+              </Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* Category Selection Modal */}
+        <Modal
+          visible={categoryModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setCategoryModal(false)}
+        >
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>
+                Select Category
+              </Text>
+
+              {categories.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  No categories available. Please create a category first.
+                </Text>
+              ) : (
+                <FlatList
+                  data={categories}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.categoryItem}
+                      onPress={() => {
+                        setSelectedCategory(item);
+                        setCategoryModal(false);
+                      }}
+                    >
+                      <Text style={styles.categoryItemText}>
+                        {item.name}
+                      </Text>
+
+                      {selectedCategory?.id === item.id && (
+                        <Text style={styles.checkMark}>
+                          ✓
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
+              )}
+
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setCategoryModal(false)}
+              >
+                <Text style={styles.closeButtonText}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </View>
+
+      {/* Custom Message Box */}
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        showCancel={messageBox.showCancel}
+        confirmText={messageBox.confirmText}
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 

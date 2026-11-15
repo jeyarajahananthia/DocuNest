@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 
 import {
   View,
@@ -7,20 +7,83 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  Platform,
 } from 'react-native';
+
+import CustomMessageBox from '../components/CustomMessageBox';
 
 export default function SettingsScreen({ onLogout }) {
 
-  const showMessage = (title, message) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    showCancel: false,
+    confirmText: 'OK',
+    cancelText: 'Cancel',
+    onConfirm: null,
+  });
+
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  // SHOW CUSTOM MESSAGE
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      confirmText: 'OK',
+      cancelText: 'Cancel',
+      onConfirm,
+    });
+  };
+
+  // SHOW CONFIRMATION
+  const showConfirmation = (
+    title,
+    message,
+    onConfirm
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type: 'confirm',
+      showCancel: true,
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      onConfirm,
+    });
+  };
+
+  // CLOSE MESSAGE BOX
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  // HANDLE CONFIRM BUTTON
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
     }
   };
 
+  // ABOUT DOCUNEST
   const showAbout = () => {
     showMessage(
       'About DocuNest',
@@ -28,6 +91,7 @@ export default function SettingsScreen({ onLogout }) {
     );
   };
 
+  // STORAGE INFORMATION
   const showStorageInfo = () => {
     showMessage(
       'Storage Information',
@@ -35,6 +99,7 @@ export default function SettingsScreen({ onLogout }) {
     );
   };
 
+  // OFFLINE INFORMATION
   const showOfflineInfo = () => {
     showMessage(
       'Offline Mode',
@@ -42,40 +107,24 @@ export default function SettingsScreen({ onLogout }) {
     );
   };
 
-  // LOGOUT
+  // LOGOUT CONFIRMATION
   const confirmLogout = () => {
+    if (loggingOut) return;
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Are you sure you want to log out of DocuNest?'
-      );
-
-      if (confirmed) {
-        handleLogout();
-      }
-
-    } else {
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to log out of DocuNest?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Logout',
-            style: 'destructive',
-            onPress: handleLogout,
-          },
-        ]
-      );
-    }
+    showConfirmation(
+      'Logout',
+      'Are you sure you want to log out of DocuNest?',
+      handleLogout
+    );
   };
 
   // EXECUTE LOGOUT
   const handleLogout = async () => {
+    if (loggingOut) return;
+
     try {
+      setLoggingOut(true);
+
       if (typeof onLogout !== 'function') {
         throw new Error('Logout function is not connected.');
       }
@@ -87,149 +136,184 @@ export default function SettingsScreen({ onLogout }) {
 
       showMessage(
         'Logout Error',
-        error.message || 'Unable to log out. Please try again.'
+        error.message || 'Unable to log out. Please try again.',
+        'error'
       );
+
+    } finally {
+      setLoggingOut(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <>
+      <ScrollView style={styles.container}>
 
-      <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>Settings</Text>
 
-      <Text style={styles.subtitle}>
-        Manage your DocuNest application.
-      </Text>
-
-      {/* APPLICATION SETTINGS */}
-      <View style={styles.section}>
-
-        <Text style={styles.sectionTitle}>Application</Text>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={showAbout}
-        >
-          <Text style={styles.settingIcon}>ℹ️</Text>
-
-          <View style={styles.settingContent}>
-            <Text style={styles.settingName}>
-              About DocuNest
-            </Text>
-            <Text style={styles.settingDescription}>
-              Application information
-            </Text>
-          </View>
-
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={showStorageInfo}
-        >
-          <Text style={styles.settingIcon}>💾</Text>
-
-          <View style={styles.settingContent}>
-            <Text style={styles.settingName}>
-              Storage Information
-            </Text>
-            <Text style={styles.settingDescription}>
-              Learn about local storage
-            </Text>
-          </View>
-
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={showOfflineInfo}
-        >
-          <Text style={styles.settingIcon}>📴</Text>
-
-          <View style={styles.settingContent}>
-            <Text style={styles.settingName}>
-              Offline Mode
-            </Text>
-            <Text style={styles.settingDescription}>
-              Learn about offline functionality
-            </Text>
-          </View>
-
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
-
-      </View>
-
-      {/* ACCOUNT SETTINGS */}
-      <View style={styles.section}>
-
-        <Text style={styles.sectionTitle}>Account</Text>
-
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={confirmLogout}
-        >
-          <Text style={styles.settingIcon}>🚪</Text>
-
-          <View style={styles.settingContent}>
-            <Text style={[styles.settingName, styles.logoutText]}>
-              Logout
-            </Text>
-
-            <Text style={styles.settingDescription}>
-              Sign out of your local account
-            </Text>
-          </View>
-
-          <Text style={styles.arrow}>›</Text>
-        </TouchableOpacity>
-
-      </View>
-
-      {/* APPLICATION DETAILS */}
-      <View style={styles.section}>
-
-        <Text style={styles.sectionTitle}>
-          Application Details
+        <Text style={styles.subtitle}>
+          Manage your DocuNest application.
         </Text>
 
-        <View style={styles.infoCard}>
+        {/* APPLICATION SETTINGS */}
 
-          <Text style={styles.infoLabel}>
-            Application Name
-          </Text>
-          <Text style={styles.infoValue}>DocuNest</Text>
+        <View style={styles.section}>
 
-          <View style={styles.separator} />
+          <Text style={styles.sectionTitle}>Application</Text>
 
-          <Text style={styles.infoLabel}>Technology</Text>
-          <Text style={styles.infoValue}>
-            React Native + Expo
-          </Text>
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={showAbout}
+          >
+            <Text style={styles.settingIcon}>ℹ️</Text>
 
-          <View style={styles.separator} />
+            <View style={styles.settingContent}>
+              <Text style={styles.settingName}>
+                About DocuNest
+              </Text>
 
-          <Text style={styles.infoLabel}>Database</Text>
-          <Text style={styles.infoValue}>SQLite</Text>
+              <Text style={styles.settingDescription}>
+                Application information
+              </Text>
+            </View>
 
-          <View style={styles.separator} />
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
 
-          <Text style={styles.infoLabel}>Version</Text>
-          <Text style={styles.infoValue}>1.0.0</Text>
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={showStorageInfo}
+          >
+            <Text style={styles.settingIcon}>💾</Text>
+
+            <View style={styles.settingContent}>
+              <Text style={styles.settingName}>
+                Storage Information
+              </Text>
+
+              <Text style={styles.settingDescription}>
+                Learn about local storage
+              </Text>
+            </View>
+
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={showOfflineInfo}
+          >
+            <Text style={styles.settingIcon}>📴</Text>
+
+            <View style={styles.settingContent}>
+              <Text style={styles.settingName}>
+                Offline Mode
+              </Text>
+
+              <Text style={styles.settingDescription}>
+                Learn about offline functionality
+              </Text>
+            </View>
+
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
 
         </View>
 
-      </View>
+        {/* ACCOUNT SETTINGS */}
 
-      <Text style={styles.footer}>
-        DocuNest © 2026
-        {'\n'}
-        Your personal file organizer
-      </Text>
+        <View style={styles.section}>
 
-    </ScrollView>
+          <Text style={styles.sectionTitle}>Account</Text>
+
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={confirmLogout}
+            disabled={loggingOut}
+          >
+            <Text style={styles.settingIcon}>🚪</Text>
+
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingName, styles.logoutText]}>
+                Logout
+              </Text>
+
+              <Text style={styles.settingDescription}>
+                {loggingOut
+                  ? 'Logging out...'
+                  : 'Sign out of your local account'}
+              </Text>
+            </View>
+
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
+
+        </View>
+
+        {/* APPLICATION DETAILS */}
+
+        <View style={styles.section}>
+
+          <Text style={styles.sectionTitle}>
+            Application Details
+          </Text>
+
+          <View style={styles.infoCard}>
+
+            <Text style={styles.infoLabel}>
+              Application Name
+            </Text>
+
+            <Text style={styles.infoValue}>DocuNest</Text>
+
+            <View style={styles.separator} />
+
+            <Text style={styles.infoLabel}>Technology</Text>
+
+            <Text style={styles.infoValue}>
+              React Native + Expo
+            </Text>
+
+            <View style={styles.separator} />
+
+            <Text style={styles.infoLabel}>Database</Text>
+
+            <Text style={styles.infoValue}>SQLite</Text>
+
+            <View style={styles.separator} />
+
+            <Text style={styles.infoLabel}>Version</Text>
+
+            <Text style={styles.infoValue}>1.0.0</Text>
+
+          </View>
+
+        </View>
+
+        {/* FOOTER */}
+
+        <Text style={styles.footer}>
+          DocuNest © 2026
+          {'\n'}
+          Your personal file organizer
+        </Text>
+
+      </ScrollView>
+
+      {/* CUSTOM MESSAGE BOX */}
+
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText={messageBox.confirmText}
+        cancelText={messageBox.cancelText}
+        showCancel={messageBox.showCancel}
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 

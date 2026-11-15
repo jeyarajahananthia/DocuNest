@@ -8,9 +8,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   ActivityIndicator,
-  Platform,
+  Modal,
 } from 'react-native';
 
 import {
@@ -33,11 +32,28 @@ export default function EditDocumentScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const showMessage = (title, message) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
+  // Custom message box
+  const [messageVisible, setMessageVisible] = useState(false);
+  const [messageTitle, setMessageTitle] = useState('');
+  const [messageText, setMessageText] = useState('');
+  const [messageType, setMessageType] = useState('success');
+  const [messageAction, setMessageAction] = useState(null);
+
+  const showMessage = (title, message, type = 'success', action = null) => {
+    setMessageTitle(title);
+    setMessageText(message);
+    setMessageType(type);
+    setMessageAction(() => action);
+    setMessageVisible(true);
+  };
+
+  const closeMessage = () => {
+    setMessageVisible(false);
+
+    if (messageAction) {
+      const action = messageAction;
+      setMessageAction(null);
+      action();
     }
   };
 
@@ -54,15 +70,19 @@ export default function EditDocumentScreen({ route, navigation }) {
       const categoryList = await getCategories();
 
       if (!document) {
-        showMessage('Error', 'Document not found.');
-        navigation.goBack();
+        showMessage(
+          'Document Not Found',
+          'The requested document could not be found.',
+          'error',
+          () => navigation.goBack()
+        );
         return;
       }
 
       setName(document.name || '');
       setDescription(document.description || '');
       setCategoryId(document.categoryId ?? null);
-      setCategories(categoryList);
+      setCategories(categoryList || []);
 
       const isTXT =
         String(document.fileType || '').toUpperCase() === 'TXT';
@@ -74,8 +94,10 @@ export default function EditDocumentScreen({ route, navigation }) {
       console.error('Loading error:', error);
 
       showMessage(
-        'Error',
-        'Unable to load document details.'
+        'Loading Failed',
+        'Unable to load document details.',
+        'error',
+        () => navigation.goBack()
       );
     } finally {
       setLoading(false);
@@ -84,18 +106,22 @@ export default function EditDocumentScreen({ route, navigation }) {
 
   // Save updated document
   const handleUpdate = async () => {
+    if (saving) return;
+
     if (!name.trim()) {
       showMessage(
         'Validation Error',
-        'Please enter a document name.'
+        'Please enter a document name.',
+        'error'
       );
       return;
     }
 
     if (isTextDocument && !content.trim()) {
       showMessage(
-        'Validation Error',
-        'Please enter some document content.'
+        'Empty Document',
+        'Please enter some document content.',
+        'error'
       );
       return;
     }
@@ -114,20 +140,23 @@ export default function EditDocumentScreen({ route, navigation }) {
       const updatedDocument = await getDocumentById(documentId);
 
       showMessage(
-        'Success',
-        'Document updated successfully!'
+        'Updated Successfully!',
+        'Your document has been updated successfully.',
+        'success',
+        () => {
+          navigation.navigate('DocumentDetails', {
+            document: updatedDocument,
+          });
+        }
       );
-
-      navigation.navigate('DocumentDetails', {
-        document: updatedDocument,
-      });
 
     } catch (error) {
       console.error('Update error:', error);
 
       showMessage(
-        'Error',
-        error.message || 'Unable to update the document.'
+        'Update Failed',
+        error.message || 'Unable to update the document.',
+        'error'
       );
     } finally {
       setSaving(false);
@@ -146,173 +175,235 @@ export default function EditDocumentScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerIcon}>✏️</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerIcon}>✏️</Text>
 
-        <Text style={styles.title}>
-          Edit Document
-        </Text>
+          <Text style={styles.title}>
+            Edit Document
+          </Text>
 
-        <Text style={styles.subtitle}>
-          Update your document information and content
-        </Text>
-      </View>
+          <Text style={styles.subtitle}>
+            Update your document information and content
+          </Text>
+        </View>
 
-      <View style={styles.formCard}>
+        <View style={styles.formCard}>
 
-        {/* Document Name */}
-        <Text style={styles.label}>
-          Document Name *
-        </Text>
+          {/* Document Name */}
+          <Text style={styles.label}>
+            Document Name *
+          </Text>
 
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter document name"
-          placeholderTextColor="#999"
-        />
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter document name"
+            placeholderTextColor="#999"
+          />
 
-        {/* Description */}
-        <Text style={styles.label}>
-          Description
-        </Text>
+          {/* Description */}
+          <Text style={styles.label}>
+            Description
+          </Text>
 
-        <TextInput
-          style={[styles.input, styles.descriptionInput]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Enter document description"
-          placeholderTextColor="#999"
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-        />
+          <TextInput
+            style={[styles.input, styles.descriptionInput]}
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Enter document description"
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
 
-        {/* Existing TXT Content Editor */}
-        {isTextDocument && (
-          <View style={styles.editorSection}>
+          {/* Existing TXT Content Editor */}
+          {isTextDocument && (
+            <View style={styles.editorSection}>
 
-            <Text style={styles.label}>
-              Document Content
-            </Text>
+              <Text style={styles.label}>
+                Document Content
+              </Text>
 
-            <Text style={styles.editorHint}>
-              Your existing content is loaded below. Edit it and save your changes.
-            </Text>
+              <Text style={styles.editorHint}>
+                Your existing content is loaded below. Edit it and save your changes.
+              </Text>
 
-            <TextInput
-              style={styles.contentEditor}
-              value={content}
-              onChangeText={setContent}
-              placeholder="Start writing your document..."
-              placeholderTextColor="#999"
-              multiline
-              textAlignVertical="top"
-              scrollEnabled={false}
-            />
+              <TextInput
+                style={styles.contentEditor}
+                value={content}
+                onChangeText={setContent}
+                placeholder="Start writing your document..."
+                placeholderTextColor="#999"
+                multiline
+                textAlignVertical="top"
+                scrollEnabled={false}
+              />
 
-            <Text style={styles.characterCount}>
-              {content.length} characters
-            </Text>
+              <Text style={styles.characterCount}>
+                {content.length} characters
+              </Text>
+
+            </View>
+          )}
+
+          {/* Categories */}
+          <Text style={styles.label}>
+            Select Category
+          </Text>
+
+          <View style={styles.categoryContainer}>
+
+            <TouchableOpacity
+              style={[
+                styles.categoryButton,
+                categoryId === null && styles.selectedCategory,
+              ]}
+              onPress={() => setCategoryId(null)}
+              disabled={saving}
+            >
+              <Text
+                style={[
+                  styles.categoryText,
+                  categoryId === null && styles.selectedCategoryText,
+                ]}
+              >
+                Uncategorized
+              </Text>
+            </TouchableOpacity>
+
+            {categories.map((category) => {
+              const selected =
+                String(categoryId) === String(category.id);
+
+              return (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryButton,
+                    selected && styles.selectedCategory,
+                  ]}
+                  onPress={() => setCategoryId(category.id)}
+                  disabled={saving}
+                >
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selected && styles.selectedCategoryText,
+                    ]}
+                  >
+                    {category.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
 
           </View>
-        )}
-
-        {/* Categories */}
-        <Text style={styles.label}>
-          Select Category
-        </Text>
-
-        <View style={styles.categoryContainer}>
-
-          <TouchableOpacity
-            style={[
-              styles.categoryButton,
-              categoryId === null && styles.selectedCategory,
-            ]}
-            onPress={() => setCategoryId(null)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                categoryId === null && styles.selectedCategoryText,
-              ]}
-            >
-              Uncategorized
-            </Text>
-          </TouchableOpacity>
-
-          {categories.map((category) => {
-            const selected =
-              String(categoryId) === String(category.id);
-
-            return (
-              <TouchableOpacity
-                key={category.id}
-                style={[
-                  styles.categoryButton,
-                  selected && styles.selectedCategory,
-                ]}
-                onPress={() => setCategoryId(category.id)}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    selected && styles.selectedCategoryText,
-                  ]}
-                >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
 
         </View>
 
-      </View>
+        {/* Save Button */}
+        <TouchableOpacity
+          style={[
+            styles.saveButton,
+            saving && styles.disabledButton,
+          ]}
+          onPress={handleUpdate}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>
+              💾 Save Changes
+            </Text>
+          )}
+        </TouchableOpacity>
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={styles.saveButton}
-        onPress={handleUpdate}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.saveButtonText}>
-            💾 Save Changes
+        {/* Cancel Button */}
+        <TouchableOpacity
+          style={styles.cancelButton}
+          onPress={() => navigation.goBack()}
+          disabled={saving}
+        >
+          <Text style={styles.cancelButtonText}>
+            Cancel
           </Text>
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      {/* Cancel Button */}
-      <TouchableOpacity
-        style={styles.cancelButton}
-        onPress={() => navigation.goBack()}
-        disabled={saving}
+      </ScrollView>
+
+      {/* CENTRED CUSTOM MESSAGE BOX */}
+      <Modal
+        visible={messageVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeMessage}
       >
-        <Text style={styles.cancelButtonText}>
-          Cancel
-        </Text>
-      </TouchableOpacity>
+        <View style={styles.messageOverlay}>
+          <View style={styles.messageBox}>
 
-    </ScrollView>
+            <View
+              style={[
+                styles.messageIcon,
+                messageType === 'success'
+                  ? styles.successIcon
+                  : styles.errorIcon,
+              ]}
+            >
+              <Text style={styles.messageIconText}>
+                {messageType === 'success' ? '✓' : '!'}
+              </Text>
+            </View>
+
+            <Text style={styles.messageTitle}>
+              {messageTitle}
+            </Text>
+
+            <Text style={styles.messageText}>
+              {messageText}
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.messageButton,
+                messageType === 'success'
+                  ? styles.successButton
+                  : styles.errorButton,
+              ]}
+              onPress={closeMessage}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.messageButtonText}>
+                OK
+              </Text>
+            </TouchableOpacity>
+
+          </View>
+        </View>
+      </Modal>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: '#F4F6F9',
+  },
+
+  container: {
+    flex: 1,
   },
 
   content: {
@@ -459,6 +550,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
+  disabledButton: {
+    opacity: 0.6,
+  },
+
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -474,6 +569,85 @@ const styles = StyleSheet.create({
 
   cancelButtonText: {
     color: '#34495E',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  // Custom message box styles
+  messageOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 25,
+  },
+
+  messageBox: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 25,
+    alignItems: 'center',
+    elevation: 10,
+  },
+
+  messageIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+
+  successIcon: {
+    backgroundColor: '#D5F5E3',
+  },
+
+  errorIcon: {
+    backgroundColor: '#FDEDEC',
+  },
+
+  messageIconText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#34495E',
+  },
+
+  messageTitle: {
+    fontSize: 21,
+    fontWeight: 'bold',
+    color: '#34495E',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+
+  messageText: {
+    fontSize: 15,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 23,
+    marginBottom: 22,
+  },
+
+  messageButton: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 9,
+    alignItems: 'center',
+  },
+
+  successButton: {
+    backgroundColor: '#27AE60',
+  },
+
+  errorButton: {
+    backgroundColor: '#34495E',
+  },
+
+  messageButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },

@@ -7,12 +7,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 
 import { registerUser } from '../services/authService';
+
+import CustomMessageBox from '../components/CustomMessageBox';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -21,21 +22,83 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // CUSTOM MESSAGE BOX STATE
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null,
+  });
+
+  // SHOW MESSAGE
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
+
+  // CLOSE MESSAGE BOX
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  // HANDLE MESSAGE CONFIRMATION
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
+    }
+  };
+
+  // REGISTER
   async function handleRegister() {
-    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Missing Information', 'Please fill in all fields.');
+    if (loading) return;
+
+    if (
+      !name.trim() ||
+      !email.trim() ||
+      !password ||
+      !confirmPassword
+    ) {
+      showMessage(
+        'Missing Information',
+        'Please fill in all fields.',
+        'error'
+      );
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Password Error', 'Passwords do not match.');
+      showMessage(
+        'Password Error',
+        'Passwords do not match.',
+        'error'
+      );
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert(
+      showMessage(
         'Password Error',
-        'Password must contain at least 8 characters.'
+        'Password must contain at least 8 characters.',
+        'error'
       );
       return;
     }
@@ -50,110 +113,139 @@ export default function RegisterScreen({ navigation }) {
       );
 
       if (result && result.success === false) {
-        Alert.alert('Registration Failed', result.message);
+        showMessage(
+          'Registration Failed',
+          result.message || 'Unable to create your account.',
+          'error'
+        );
         return;
       }
 
-      Alert.alert(
+      showMessage(
         'Registration Successful',
         'Your DocuNest account has been created. Please log in.',
-        [
-          {
-            text: 'Continue to Login',
-            onPress: () => {
-              navigation.navigate('Login');
-            },
-          },
-        ]
+        'success',
+        () => navigation.navigate('Login')
       );
+
     } catch (error) {
-      Alert.alert(
+      console.error('Registration error:', error);
+
+      showMessage(
         'Registration Failed',
-        error.message || 'Unable to create your account.'
+        error.message || 'Unable to create your account.',
+        'error'
       );
+
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.card}>
-        <Text style={styles.logo}>📁 DocuNest</Text>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.card}>
+          <Text style={styles.logo}>📁 DocuNest</Text>
 
-        <Text style={styles.subtitle}>
-          Create your local account
-        </Text>
-
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your name"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
-
-        <Text style={styles.label}>Email Address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Minimum 8 characters"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <Text style={styles.label}>Confirm Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Re-enter your password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>
-              Create Account
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.loginRow}>
-          <Text style={styles.loginText}>
-            Already have an account?
+          <Text style={styles.subtitle}>
+            Create your local account
           </Text>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.loginLink}> Login</Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.label}>Full Name</Text>
 
-        <Text style={styles.footer}>
-          Your account is stored locally on this device.
-        </Text>
-      </View>
-    </ScrollView>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your name"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Email Address</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Password</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Minimum 8 characters"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            editable={!loading}
+          />
+
+          <Text style={styles.label}>Confirm Password</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            editable={!loading}
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.button,
+              loading && styles.disabledButton,
+            ]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.buttonText}>
+                Create Account
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.loginRow}>
+            <Text style={styles.loginText}>
+              Already have an account?
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login')}
+              disabled={loading}
+            >
+              <Text style={styles.loginLink}> Login</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.footer}>
+            Your account is stored locally on this device.
+          </Text>
+        </View>
+      </ScrollView>
+
+      {/* CUSTOM MESSAGE BOX */}
+
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        confirmText="OK"
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 
@@ -210,6 +302,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 25,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
   },
 
   buttonText: {

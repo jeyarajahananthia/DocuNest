@@ -7,18 +7,28 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Linking,
   Platform,
   ActivityIndicator,
 } from 'react-native';
 
 import { deleteDocument } from '../database/database';
+import CustomMessageBox from '../components/CustomMessageBox';
 
 export default function DocumentDetailsScreen({ route, navigation }) {
   const [document, setDocument] = useState(route.params?.document);
   const [opening, setOpening] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [messageBox, setMessageBox] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'info',
+    showCancel: false,
+    confirmText: 'OK',
+    onConfirm: null,
+  });
 
   useEffect(() => {
     setDocument(route.params?.document);
@@ -27,11 +37,56 @@ export default function DocumentDetailsScreen({ route, navigation }) {
   const isTextDocument =
     String(document?.fileType || '').toUpperCase() === 'TXT';
 
-  const showMessage = (title, message) => {
-    if (Platform.OS === 'web') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
+  // Show custom message box
+  const showMessage = (
+    title,
+    message,
+    type = 'info',
+    onConfirm = null
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type,
+      showCancel: false,
+      confirmText: 'OK',
+      onConfirm,
+    });
+  };
+
+  // Show custom confirmation box
+  const showConfirmation = (
+    title,
+    message,
+    onConfirm
+  ) => {
+    setMessageBox({
+      visible: true,
+      title,
+      message,
+      type: 'confirm',
+      showCancel: true,
+      confirmText: 'Yes, Delete',
+      onConfirm,
+    });
+  };
+
+  const closeMessageBox = () => {
+    setMessageBox((previous) => ({
+      ...previous,
+      visible: false,
+      onConfirm: null,
+    }));
+  };
+
+  const handleMessageConfirm = () => {
+    const callback = messageBox.onConfirm;
+
+    closeMessageBox();
+
+    if (callback) {
+      callback();
     }
   };
 
@@ -39,12 +94,12 @@ export default function DocumentDetailsScreen({ route, navigation }) {
   const openDocument = async () => {
     if (!document) return;
 
-    // TXT documents are stored in SQLite, not as external files.
     if (isTextDocument) {
       if (!document.content || !document.content.trim()) {
         showMessage(
           'No Content',
-          'This text document does not contain any saved content.'
+          'This text document does not contain any saved content.',
+          'info'
         );
       }
       return;
@@ -53,7 +108,8 @@ export default function DocumentDetailsScreen({ route, navigation }) {
     if (!document.fileUri) {
       showMessage(
         'File Not Found',
-        'This document does not have a saved file.'
+        'This document does not have a saved file.',
+        'error'
       );
       return;
     }
@@ -70,7 +126,8 @@ export default function DocumentDetailsScreen({ route, navigation }) {
           if (!newTab) {
             showMessage(
               'Popup Blocked',
-              'Please allow popups for DocuNest and try again.'
+              'Please allow popups for DocuNest and try again.',
+              'error'
             );
             return;
           }
@@ -91,7 +148,8 @@ export default function DocumentDetailsScreen({ route, navigation }) {
           if (!newTab) {
             showMessage(
               'Popup Blocked',
-              'Please allow popups for DocuNest.'
+              'Please allow popups for DocuNest.',
+              'error'
             );
           }
         }
@@ -106,7 +164,8 @@ export default function DocumentDetailsScreen({ route, navigation }) {
 
       showMessage(
         'Unable to Open',
-        'Could not open this document. Make sure your device has an application that supports this file type.'
+        'Could not open this document. Make sure your device has an application that supports this file type.',
+        'error'
       );
     } finally {
       setOpening(false);
@@ -122,55 +181,37 @@ export default function DocumentDetailsScreen({ route, navigation }) {
 
   // Delete document
   const handleDelete = () => {
-    const confirmDelete = async () => {
-      try {
-        setDeleting(true);
+    showConfirmation(
+      'Delete Document?',
+      `Are you sure you want to delete "${document.name}"? This action cannot be undone.`,
+      confirmDelete
+    );
+  };
 
-        await deleteDocument(document.id);
+  // Confirm and perform deletion
+  const confirmDelete = async () => {
+    try {
+      setDeleting(true);
 
-        showMessage(
-          'Deleted Successfully',
-          'The document has been deleted successfully.'
-        );
+      await deleteDocument(document.id);
 
-        navigation.goBack();
-
-      } catch (error) {
-        console.error('Document deletion error:', error);
-
-        showMessage(
-          'Delete Failed',
-          error.message || 'Unable to delete the document.'
-        );
-      } finally {
-        setDeleting(false);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Are you sure you want to delete this file?'
+      showMessage(
+        'Deleted Successfully',
+        'The document has been deleted successfully.',
+        'success',
+        () => navigation.goBack()
       );
 
-      if (confirmed) {
-        confirmDelete();
-      }
-    } else {
-      Alert.alert(
-        'Confirm Delete',
-        'Are you sure you want to delete this file?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Yes, Delete',
-            style: 'destructive',
-            onPress: confirmDelete,
-          },
-        ]
+    } catch (error) {
+      console.error('Document deletion error:', error);
+
+      showMessage(
+        'Delete Failed',
+        error.message || 'Unable to delete the document.',
+        'error'
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -184,152 +225,166 @@ export default function DocumentDetailsScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-    >
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+      >
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.icon}>
-          {isTextDocument ? '📝' : '📄'}
-        </Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.icon}>
+            {isTextDocument ? '📝' : '📄'}
+          </Text>
 
-        <Text style={styles.title}>
-          {document.name}
-        </Text>
+          <Text style={styles.title}>
+            {document.name}
+          </Text>
 
-        <Text style={styles.subtitle}>
-          Document Information
-        </Text>
-      </View>
+          <Text style={styles.subtitle}>
+            Document Information
+          </Text>
+        </View>
 
-      {/* Open Document Button - only for imported files */}
-      {!isTextDocument && (
+        {/* Open Document Button */}
+        {!isTextDocument && (
+          <TouchableOpacity
+            style={styles.openButton}
+            onPress={openDocument}
+            disabled={opening || deleting}
+          >
+            {opening ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.openButtonText}>
+                📂 Open Document
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Edit Button */}
         <TouchableOpacity
-          style={styles.openButton}
-          onPress={openDocument}
-          disabled={opening}
+          style={styles.editButton}
+          onPress={handleEdit}
+          disabled={deleting}
         >
-          {opening ? (
+          <Text style={styles.editButtonText}>
+            ✏️ Edit Document
+          </Text>
+        </TouchableOpacity>
+
+        {/* Delete Button */}
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={handleDelete}
+          disabled={deleting}
+        >
+          {deleting ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.openButtonText}>
-              📂 Open Document
+            <Text style={styles.deleteButtonText}>
+              🗑️ Delete Document
             </Text>
           )}
         </TouchableOpacity>
-      )}
 
-      {/* Edit Button */}
-      <TouchableOpacity
-        style={styles.editButton}
-        onPress={handleEdit}
-        disabled={deleting}
-      >
-        <Text style={styles.editButtonText}>
-          ✏️ Edit Document
-        </Text>
-      </TouchableOpacity>
+        {/* TXT Document Content */}
+        {isTextDocument && (
+          <View style={styles.contentCard}>
+            <Text style={styles.sectionTitle}>
+              📝 Document Content
+            </Text>
 
-      {/* Delete Button */}
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={handleDelete}
-        disabled={deleting}
-      >
-        {deleting ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.deleteButtonText}>
-            🗑️ Delete Document
-          </Text>
+            {document.content && document.content.trim() ? (
+              <Text selectable style={styles.documentContent}>
+                {document.content}
+              </Text>
+            ) : (
+              <Text style={styles.emptyContent}>
+                No content has been saved in this document.
+              </Text>
+            )}
+          </View>
         )}
-      </TouchableOpacity>
 
-      {/* TXT Document Content */}
-      {isTextDocument && (
-        <View style={styles.contentCard}>
+        {/* General Information */}
+        <View style={styles.detailsCard}>
           <Text style={styles.sectionTitle}>
-            📝 Document Content
+            General Information
           </Text>
 
-          {document.content && document.content.trim() ? (
-            <Text selectable style={styles.documentContent}>
-              {document.content}
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Document Name</Text>
+            <Text style={styles.value}>
+              {document.name || 'N/A'}
             </Text>
-          ) : (
-            <Text style={styles.emptyContent}>
-              No content has been saved in this document.
+          </View>
+
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Description</Text>
+            <Text style={styles.value}>
+              {document.description || 'No description available'}
             </Text>
-          )}
-        </View>
-      )}
+          </View>
 
-      {/* General Information */}
-      <View style={styles.detailsCard}>
-        <Text style={styles.sectionTitle}>
-          General Information
-        </Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Category</Text>
+            <Text style={styles.value}>
+              {document.categoryName || 'Uncategorized'}
+            </Text>
+          </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Document Name</Text>
-          <Text style={styles.value}>
-            {document.name || 'N/A'}
-          </Text>
-        </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>File Type</Text>
+            <Text style={styles.value}>
+              {document.fileType || 'Unknown'}
+            </Text>
+          </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Description</Text>
-          <Text style={styles.value}>
-            {document.description || 'No description available'}
-          </Text>
-        </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>File Size</Text>
+            <Text style={styles.value}>
+              {isTextDocument
+                ? `${Number(document.fileSize || 0)} characters`
+                : `${(
+                    Number(document.fileSize || 0) /
+                    (1024 * 1024)
+                  ).toFixed(2)} MB`}
+            </Text>
+          </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Category</Text>
-          <Text style={styles.value}>
-            {document.categoryName || 'Uncategorized'}
-          </Text>
-        </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Date Added</Text>
+            <Text style={styles.value}>
+              {document.dateAdded
+                ? new Date(document.dateAdded).toLocaleDateString()
+                : 'Not available'}
+            </Text>
+          </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>File Type</Text>
-          <Text style={styles.value}>
-            {document.fileType || 'Unknown'}
-          </Text>
-        </View>
-
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>File Size</Text>
-          <Text style={styles.value}>
-            {isTextDocument
-              ? `${Number(document.fileSize || 0)} characters`
-              : `${(
-                  Number(document.fileSize || 0) /
-                  (1024 * 1024)
-                ).toFixed(2)} MB`}
-          </Text>
+          <View style={styles.detailRow}>
+            <Text style={styles.label}>Favorite</Text>
+            <Text style={styles.value}>
+              {document.isFavorite ? '⭐ Yes' : 'No'}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Date Added</Text>
-          <Text style={styles.value}>
-            {document.dateAdded
-              ? new Date(document.dateAdded).toLocaleDateString()
-              : 'Not available'}
-          </Text>
-        </View>
+      </ScrollView>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.label}>Favorite</Text>
-          <Text style={styles.value}>
-            {document.isFavorite ? '⭐ Yes' : 'No'}
-          </Text>
-        </View>
-      </View>
-
-    </ScrollView>
+      {/* Reusable Custom Message Box */}
+      <CustomMessageBox
+        visible={messageBox.visible}
+        title={messageBox.title}
+        message={messageBox.message}
+        type={messageBox.type}
+        showCancel={messageBox.showCancel}
+        confirmText={messageBox.confirmText}
+        onConfirm={handleMessageConfirm}
+        onCancel={closeMessageBox}
+      />
+    </>
   );
 }
 
