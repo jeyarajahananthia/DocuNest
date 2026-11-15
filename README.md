@@ -139,19 +139,19 @@ Developed as part of the Mobile Computing Individual Continuous Assessment (ICA)
 ## 📱 Application Screenshots
 
 ### Login Screen
-![Login Screen](screenshots/login.png)
+![Login Screen](screenshots/login.PNG)
 
 ### Register Screen
-![Register Screen](screenshots/register.png)
+![Register Screen](screenshots/register.PNG)
 
 ### Home Dashboard
-![Home Dashboard](screenshots/home.png)
+![Home Dashboard](screenshots/home.PNG)
 
 ### All Documents
-![All Documents](screenshots/documents.png)
+![All Documents](screenshots/documents.PNG)
 
 ### Categories
-![Categories](screenshots/categories.png)
+![Categories](screenshots/categories.PNG)
 
 ### Settings
-![Settings](screenshots/settings.png)
+![Settings](screenshots/settings.PNG)
