@@ -1,4 +1,3 @@
-
 # 📁 DocuNest – Personal File Organizer
 
 DocuNest is a mobile application developed using React Native that helps users efficiently organize and manage their personal documents in one place. Users can upload, categorize, search, view, edit, and delete documents through a simple and user-friendly interface.
@@ -15,9 +14,9 @@ The application uses a local SQLite database and is designed to work offline, al
 
 ## ✨ Main Features
 
-- **Login Page** – User can login with their credentials.
-- **Resister Page** – View an overview of documents and categories.
-- **Dashboard** – View an overview of documents and categories.
+- **Login Page** – Allows users to log in using their credentials.
+- **Registration Page** – Allows new users to create an account.
+- **Dashboard** – Displays an overview of documents and categories.
 - **Document Upload** – Import documents from the device.
 - **Document Categorization** – Organize documents into different categories.
 - **View Documents** – Access stored documents.
@@ -25,8 +24,9 @@ The application uses a local SQLite database and is designed to work offline, al
 - **Filter Documents** – Filter documents by category or file type.
 - **Edit Documents** – Update document information.
 - **Delete Documents** – Remove unwanted documents.
-- **Create new file** – create new file rather than upload.
+- **Create New File** – Create new text files within the application.
 - **Offline Access** – Manage documents without an internet connection.
+- **User Authentication** – Provides local login and logout functionality.
 
 ## 🛠️ Technologies Used
 
@@ -43,32 +43,58 @@ The application uses a local SQLite database and is designed to work offline, al
 
 ## 📱 Application Screens
 
-1. Login Page 
-2. Register Page
+1. Login Screen
+2. Register Screen
 3. Dashboard Screen
-4. Categories Screen
-5. Documents Screen
+4. All Documents Screen
+5. Categories Screen
 6. Document Details Screen
-7. Create new file screen
- 
- 
+7. Create New File Screen
+8. Settings Screen
+
+## 📸 Application Screenshots
+
+### Login Screen
+![Login Screen](./screenshots/login.PNG)
+
+### Register Screen
+![Register Screen](./screenshots/register.PNG)
+
+### Home Dashboard
+![Home Dashboard](./screenshots/home.PNG)
+
+### All Documents
+![All Documents](./screenshots/documents.PNG)
+
+### Categories
+![Categories](./screenshots/categories.PNG)
+
+### Settings
+![Settings](./screenshots/settings.PNG)
+
 ## 📂 Project Structure
 
 ```text
 DocuNest/
 │
 ├── assets/
-│   └── images/
+│
+├── screenshots/
+│   ├── login.PNG
+│   ├── register.PNG
+│   ├── home.PNG
+│   ├── documents.PNG
+│   ├── categories.PNG
+│   └── settings.PNG
 │
 ├── src/
-│   ├── components/
-│   ├── screens/
-│   ├── navigation/
 │   ├── database/
-│   ├── utils/
-│   └── styles/
+│   ├── navigation/
+│   ├── screens/
+│   └── services/
 │
 ├── App.js
+├── app.json
 ├── package.json
 └── README.md
 ```
@@ -78,7 +104,7 @@ DocuNest/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/jeyarajahananthia/DocuNest
+git clone https://github.com/jeyarajahananthia/DocuNest.git
 ```
 
 ### 2. Navigate to the Project Folder
@@ -102,16 +128,17 @@ npx expo start
 ### 5. Run the Application
 
 - Scan the QR code using Expo Go.
-- Alternatively, run it using an Android emulator.
+- Alternatively, run the application using an Android emulator.
 
 ## 💾 Database
 
 DocuNest uses SQLite as its local database to store document information and related data.
 
 The database supports:
+
 - Document information management.
 - Category management.
-- User profile information.
+- User account information.
 - Local data retrieval and updates.
 
 Document files are managed using the device's local file system.
@@ -135,23 +162,3 @@ DocuNest is designed to operate without an internet connection. Documents and th
 ---
 
 Developed as part of the Mobile Computing Individual Continuous Assessment (ICA).
-```
-## 📱 Application Screenshots
-
-### Login Screen
-![Login Screen](./screenshots/login.PNG)
-
-### Register Screen
-![Register Screen](./screenshots/register.PNG)
-
-### Home Dashboard
-![Home Dashboard](./screenshots/home.PNG)
-
-### All Documents
-![All Documents](./screenshots/documents.PNG)
-
-### Categories
-![Categories](./screenshots/categories.PNG)
-
-### Settings
-![Settings](./screenshots/settings.PNG)
