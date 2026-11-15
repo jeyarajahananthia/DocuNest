@@ -161,4 +161,4 @@ DocuNest is designed to operate without an internet connection. Documents and th
 
 ---
 
-Developed as part of the Mobile Computing Individual Continuous Assessment (ICA).
+Developed as part of the Mobile Computing Individual Assessment .
