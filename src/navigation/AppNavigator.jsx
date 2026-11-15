@@ -45,13 +45,20 @@ function BottomTabs({ onLogout }) {
         tabBarActiveTintColor: '#3498DB',
         tabBarInactiveTintColor: '#7F8C8D',
 
+        // BOTTOM TAB BAR STYLE (WEB)
         tabBarStyle: {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: '100%',
           height: 65,
-          paddingBottom: 8,
           paddingTop: 6,
+          paddingBottom: 6,
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E5E7E9',
+          elevation: 8,
         },
 
         tabBarLabelStyle: {
@@ -61,6 +68,10 @@ function BottomTabs({ onLogout }) {
 
         tabBarItemStyle: {
           flex: 1,
+          width: '20%',
+          maxWidth: '20%',
+          alignItems: 'center',
+          justifyContent: 'center',
         },
 
         tabBarIcon: ({ color, size, focused }) => {
@@ -72,7 +83,9 @@ function BottomTabs({ onLogout }) {
               break;
 
             case 'Documents':
-              iconName = focused ? 'document-text' : 'document-text-outline';
+              iconName = focused
+                ? 'document-text'
+                : 'document-text-outline';
               break;
 
             case 'Categories':
@@ -84,7 +97,9 @@ function BottomTabs({ onLogout }) {
               break;
 
             case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
+              iconName = focused
+                ? 'settings'
+                : 'settings-outline';
               break;
 
             default:
@@ -101,7 +116,6 @@ function BottomTabs({ onLogout }) {
         },
       })}
     >
-
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -172,7 +186,6 @@ function BottomTabs({ onLogout }) {
           tabBarButton: () => null,
         }}
       />
-
     </Tab.Navigator>
   );
 }
@@ -197,7 +210,6 @@ export default function AppNavigator({ onLogout }) {
         },
       }}
     >
-
       <Stack.Screen
         name="MainTabs"
         options={{
@@ -227,7 +239,6 @@ export default function AppNavigator({ onLogout }) {
           title: 'Edit Document',
         }}
       />
-
     </Stack.Navigator>
   );
 }
