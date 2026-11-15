@@ -136,3 +136,22 @@ DocuNest is designed to operate without an internet connection. Documents and th
 
 Developed as part of the Mobile Computing Individual Continuous Assessment (ICA).
 ```
+## 📱 Application Screenshots
+
+### Login Screen
+![Login Screen](screenshots/login.png)
+
+### Register Screen
+![Register Screen](screenshots/register.png)
+
+### Home Dashboard
+![Home Dashboard](screenshots/home.png)
+
+### All Documents
+![All Documents](screenshots/documents.png)
+
+### Categories
+![Categories](screenshots/categories.png)
+
+### Settings
+![Settings](screenshots/settings.png)
