@@ -1,5 +1,11 @@
 
 import React from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -22,14 +28,134 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // ========================================
+// TAB CONFIGURATION
+// ========================================
+
+const tabItems = {
+  Home: {
+    label: 'Home',
+    icon: 'home-outline',
+    activeIcon: 'home',
+  },
+
+  Documents: {
+    label: 'Documents',
+    icon: 'document-text-outline',
+    activeIcon: 'document-text',
+  },
+
+  Categories: {
+    label: 'Categories',
+    icon: 'folder-outline',
+    activeIcon: 'folder',
+  },
+
+  Create: {
+    label: 'Create',
+    icon: 'create-outline',
+    activeIcon: 'create',
+  },
+
+  Settings: {
+    label: 'Settings',
+    icon: 'settings-outline',
+    activeIcon: 'settings',
+  },
+};
+
+// ========================================
+// CUSTOM BOTTOM TAB BAR
+// ========================================
+
+function CustomTabBar({ state, descriptors, navigation }) {
+
+  // Only display the five main tabs
+  const visibleRoutes = state.routes.filter(
+    route => tabItems[route.name]
+  );
+
+  return (
+    <View style={styles.tabBarContainer}>
+
+      {visibleRoutes.map((route) => {
+
+        const focused =
+          state.routes[state.index].key === route.key;
+
+        const tab = tabItems[route.name];
+
+        const color = focused ? '#3498DB' : '#7F8C8D';
+
+        const onPress = () => {
+
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!focused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        return (
+          <Pressable
+            key={route.key}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            accessibilityRole="button"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={tab.label}
+            style={styles.tabItem}
+          >
+
+            <Ionicons
+              name={focused ? tab.activeIcon : tab.icon}
+              size={23}
+              color={color}
+            />
+
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.tabLabel,
+                { color: color },
+              ]}
+            >
+              {tab.label}
+            </Text>
+
+          </Pressable>
+        );
+      })}
+
+    </View>
+  );
+}
+
+// ========================================
 // BOTTOM TAB NAVIGATION
 // ========================================
 
 function BottomTabs({ onLogout }) {
+
   return (
     <Tab.Navigator
       initialRouteName="Home"
-      screenOptions={({ route }) => ({
+
+      tabBar={(props) => (
+        <CustomTabBar {...props} />
+      )}
+
+      screenOptions={{
         headerShown: true,
 
         headerStyle: {
@@ -41,87 +167,16 @@ function BottomTabs({ onLogout }) {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-
-        tabBarActiveTintColor: '#3498DB',
-        tabBarInactiveTintColor: '#7F8C8D',
-
-        // BOTTOM TAB BAR STYLE (WEB)
-        tabBarStyle: {
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: '100%',
-          height: 65,
-          paddingTop: 6,
-          paddingBottom: 6,
-          backgroundColor: '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7E9',
-          elevation: 8,
-        },
-
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
-
-        tabBarItemStyle: {
-          flex: 1,
-          width: '20%',
-          maxWidth: '20%',
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-
-        tabBarIcon: ({ color, size, focused }) => {
-          let iconName;
-
-          switch (route.name) {
-            case 'Home':
-              iconName = focused ? 'home' : 'home-outline';
-              break;
-
-            case 'Documents':
-              iconName = focused
-                ? 'document-text'
-                : 'document-text-outline';
-              break;
-
-            case 'Categories':
-              iconName = focused ? 'folder' : 'folder-outline';
-              break;
-
-            case 'Create':
-              iconName = focused ? 'create' : 'create-outline';
-              break;
-
-            case 'Settings':
-              iconName = focused
-                ? 'settings'
-                : 'settings-outline';
-              break;
-
-            default:
-              iconName = 'ellipse-outline';
-          }
-
-          return (
-            <Ionicons
-              name={iconName}
-              size={size}
-              color={color}
-            />
-          );
-        },
-      })}
+      }}
     >
+
+      {/* MAIN TABS */}
+
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
           title: 'DocuNest',
-          tabBarLabel: 'Home',
         }}
       />
 
@@ -130,7 +185,6 @@ function BottomTabs({ onLogout }) {
         component={AllDocumentsScreen}
         options={{
           title: 'All Documents',
-          tabBarLabel: 'Documents',
         }}
       />
 
@@ -139,7 +193,6 @@ function BottomTabs({ onLogout }) {
         component={CategoriesScreen}
         options={{
           title: 'Categories',
-          tabBarLabel: 'Categories',
         }}
       />
 
@@ -148,7 +201,6 @@ function BottomTabs({ onLogout }) {
         component={CreateDocumentScreen}
         options={{
           title: 'Create Document',
-          tabBarLabel: 'Create',
         }}
       />
 
@@ -156,7 +208,6 @@ function BottomTabs({ onLogout }) {
         name="Settings"
         options={{
           title: 'Settings',
-          tabBarLabel: 'Settings',
         }}
       >
         {(props) => (
@@ -174,7 +225,6 @@ function BottomTabs({ onLogout }) {
         component={AddDocumentScreen}
         options={{
           title: 'Import Document',
-          tabBarButton: () => null,
         }}
       />
 
@@ -183,9 +233,9 @@ function BottomTabs({ onLogout }) {
         component={CategoryDocumentsScreen}
         options={{
           title: 'Category Documents',
-          tabBarButton: () => null,
         }}
       />
+
     </Tab.Navigator>
   );
 }
@@ -195,9 +245,11 @@ function BottomTabs({ onLogout }) {
 // ========================================
 
 export default function AppNavigator({ onLogout }) {
+
   return (
     <Stack.Navigator
       initialRouteName="MainTabs"
+
       screenOptions={{
         headerStyle: {
           backgroundColor: '#34495E',
@@ -210,6 +262,9 @@ export default function AppNavigator({ onLogout }) {
         },
       }}
     >
+
+      {/* MAIN APPLICATION */}
+
       <Stack.Screen
         name="MainTabs"
         options={{
@@ -224,6 +279,8 @@ export default function AppNavigator({ onLogout }) {
         )}
       </Stack.Screen>
 
+      {/* DOCUMENT DETAILS */}
+
       <Stack.Screen
         name="DocumentDetails"
         component={DocumentDetailsScreen}
@@ -232,6 +289,8 @@ export default function AppNavigator({ onLogout }) {
         }}
       />
 
+      {/* EDIT DOCUMENT */}
+
       <Stack.Screen
         name="EditDocument"
         component={EditDocumentScreen}
@@ -239,6 +298,62 @@ export default function AppNavigator({ onLogout }) {
           title: 'Edit Document',
         }}
       />
+
     </Stack.Navigator>
   );
 }
+
+// ========================================
+// STYLES
+// ========================================
+
+const styles = StyleSheet.create({
+
+  // Main bottom navigation container
+  tabBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+
+    width: '100%',
+    height: 65,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    backgroundColor: '#FFFFFF',
+
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7E9',
+
+    paddingTop: 5,
+    paddingBottom: 5,
+
+    elevation: 8,
+  },
+
+  // Each tab takes an equal share of available width
+  tabItem: {
+    flex: 1,
+    width: '20%',
+    minWidth: 0,
+
+    height: '100%',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    paddingHorizontal: 2,
+  },
+
+  // Tab text
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+
+});
